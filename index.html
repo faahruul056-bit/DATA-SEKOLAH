@@ -11,6 +11,12 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
+        // Proteksi Halaman: Cek apakah user sudah login
+        const currentUser = JSON.parse(localStorage.getItem('angkasa_user'));
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        }
+
         tailwind.config = {
             theme: {
                 extend: {
@@ -85,17 +91,21 @@
                 </a>
             </nav>
 
-            <!-- User Status Footer -->
+            <!-- User Status & Logout Footer -->
             <div class="p-4 mx-4 mb-4 bg-slate-800/80 rounded-2xl border border-slate-700/50">
-                <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-3 mb-3">
                     <div class="w-9 h-9 rounded-full bg-angkasa-blue flex items-center justify-center font-bold text-amber-400 border border-amber-400/30">
-                        A
+                        <span id="user-avatar">A</span>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-white truncate">Administrator</p>
-                        <span class="inline-block px-2 py-0.5 text-[10px] font-bold bg-amber-400/20 text-amber-300 rounded-md border border-amber-400/30">Yayasan Angkasa</span>
+                        <p id="user-name" class="text-sm font-semibold text-white truncate">Administrator</p>
+                        <span id="user-role" class="inline-block px-2 py-0.5 text-[10px] font-bold bg-amber-400/20 text-amber-300 rounded-md border border-amber-400/30">Yayasan Angkasa</span>
                     </div>
                 </div>
+                <button onclick="handleLogout()" class="w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 font-semibold text-xs rounded-xl transition flex items-center justify-center space-x-2">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                    <span>Keluar Sistem</span>
+                </button>
             </div>
         </div>
     </aside>
@@ -344,6 +354,18 @@
         // Init Icons
         lucide.createIcons();
 
+        // Load Session User Data
+        if (currentUser) {
+            document.getElementById('user-name').innerText = currentUser.name || 'User';
+            document.getElementById('user-role').innerText = currentUser.role || 'Operator';
+            document.getElementById('user-avatar').innerText = (currentUser.name || 'A').charAt(0).toUpperCase();
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('angkasa_user');
+            window.location.href = 'login.html';
+        }
+
         // Dummy Master Data
         const masterData = [
             { npsn: "10100001", nama: "TK Angkasa 01 Halim", jenjang: "TK", cabang: "Halim", area: "Kodau I", siswa: 142, guru: 12, rombel: 6, lk: 70, pr: 72 },
@@ -382,7 +404,6 @@
             const labels = data.map(d => d.nama);
             const siswaData = data.map(d => d.siswa);
 
-            // Bar Chart
             if (barChartInstance) barChartInstance.destroy();
             const ctxBar = document.getElementById('barChart').getContext('2d');
             barChartInstance = new Chart(ctxBar, {
@@ -403,7 +424,6 @@
                 }
             });
 
-            // Doughnut Chart
             const totalLk = data.reduce((acc, d) => acc + d.lk, 0);
             const totalPr = data.reduce((acc, d) => acc + d.pr, 0);
 
@@ -438,7 +458,6 @@
                        (cabang === 'ALL' || d.cabang === cabang);
             });
 
-            // Update KPI
             const totalSiswa = filtered.reduce((acc, d) => acc + d.siswa, 0);
             const totalGuru = filtered.reduce((acc, d) => acc + d.guru, 0);
             const totalRombel = filtered.reduce((acc, d) => acc + d.rombel, 0);
