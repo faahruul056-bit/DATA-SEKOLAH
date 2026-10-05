@@ -1,108 +1,873 @@
-import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, flash
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP-Sekolah - Dashboard Pendataan Sekolah</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            50: '#f0f4f8',
+                            100: '#d9e2ec',
+                            500: '#334e68',
+                            800: '#102a43',
+                            900: '#0b1b2b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 flex flex-col font-sans">
 
-app = Flask(__name__)
-app.secret_key = 'kunci_rahasia_kantor_123'  # Untuk flash message
+    <!-- Header & Navigation Bar -->
+    <header class="bg-navy-900 text-white sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand & Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl flex items-center justify-center w-10 h-10 shadow-sm">
+                        <i class="fa-solid fa-school"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg tracking-wide block leading-tight">SIP-Sekolah</span>
+                        <span class="text-xs text-slate-300 font-normal hidden sm:block">Sistem Informasi Pendataan Sekolah Kantor</span>
+                    </div>
+                </div>
 
-DATABASE = 'database_sekolah.db'
+                <!-- Global Search & Profile -->
+                <div class="flex items-center space-x-4">
+                    <div class="relative hidden md:block w-64">
+                        <input type="text" id="globalSearch" placeholder="Cari NPSN atau Sekolah..." 
+                            class="w-full pl-9 pr-4 py-1.5 bg-navy-800 text-slate-100 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-400 border border-slate-700">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                    </div>
 
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row  # Mengembalikan hasil sebagai dictionary
-    return conn
+                    <!-- User Info -->
+                    <div class="flex items-center space-x-3 border-l border-slate-700 pl-4">
+                        <div class="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                            AD
+                        </div>
+                        <div class="hidden lg:block text-left">
+                            <div class="text-sm font-semibold text-white leading-tight">Admin Kantor</div>
+                            <div class="text-xs text-slate-400">Dinas Pendidikan</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-# Inisialisasi Database jika belum ada
-def init_db():
-    conn = get_db_connection()
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS sekolah (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            npsn TEXT UNIQUE NOT NULL,
-            nama_sekolah TEXT NOT NULL,
-            jenjang TEXT NOT NULL,
-            status TEXT NOT NULL,
-            akreditasi TEXT,
-            alamat TEXT,
-            jumlah_siswa INTEGER DEFAULT 0,
-            jumlah_guru INTEGER DEFAULT 0
-        )
-    ''')
-    conn.commit()
-    conn.close()
+        <!-- Navigation Tabs -->
+        <nav class="bg-navy-800 border-t border-slate-700/50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex space-x-1 overflow-x-auto py-2 scrollbar-none">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab text-white bg-blue-600 px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('sekolah')" id="tab-sekolah" class="nav-tab text-slate-300 hover:text-white hover:bg-navy-700 px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition">
+                        <i class="fa-solid fa-building-columns"></i>
+                        <span>Data Sekolah</span>
+                    </button>
+                    <button onclick="switchTab('guru')" id="tab-guru" class="nav-tab text-slate-300 hover:text-white hover:bg-navy-700 px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                        <span>Guru & Staff</span>
+                    </button>
+                    <button onclick="switchTab('laporan')" id="tab-laporan" class="nav-tab text-slate-300 hover:text-white hover:bg-navy-700 px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition">
+                        <i class="fa-solid fa-file-invoice"></i>
+                        <span>Laporan / Cetak</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </header>
 
-# ---------------- ROUTING / HALAMAN ---------------- #
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-# 1. Dashboard Utama
-@app.route('/')
-def index():
-    conn = get_db_connection()
-    total_sekolah = conn.execute('SELECT COUNT(*) FROM sekolah').fetchone()[0]
-    total_siswa = conn.execute('SELECT SUM(jumlah_siswa) FROM sekolah').fetchone()[0] or 0
-    total_guru = conn.execute('SELECT SUM(jumlah_guru) FROM sekolah').fetchone()[0] or 0
-    sekolah_negeri = conn.execute("SELECT COUNT(*) FROM sekolah WHERE status='Negeri'").fetchone()[0]
-    sekolah_swasta = conn.execute("SELECT COUNT(*) FROM sekolah WHERE status='Swasta'").fetchone()[0]
-    conn.close()
+        <!-- Toast Notification Bar -->
+        <div id="toastNotification" class="hidden mb-4 p-4 rounded-lg shadow-md transition-all duration-300 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i id="toastIcon" class="fa-solid text-lg"></i>
+                <span id="toastMessage" class="text-sm font-medium"></span>
+            </div>
+            <button onclick="hideToast()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+        </div>
 
-    return render_template('index.html', 
-                           total_sekolah=total_sekolah, 
-                           total_siswa=total_siswa, 
-                           total_guru=total_guru,
-                           sekolah_negeri=sekolah_negeri,
-                           sekolah_swasta=sekolah_swasta)
+        <!-- ================= PAGE 1: DASHBOARD VIEW ================= -->
+        <div id="view-dashboard" class="tab-content space-y-6">
+            
+            <!-- Header Banner -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Dashboard Informasi Data Sekolah</h1>
+                    <p class="text-slate-500 text-sm">Ringkasan statistik dan rekapitulasi data sekolah kantor.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="exportData('Excel')" class="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Export Excel</span>
+                    </button>
+                    <button onclick="window.print()" class="inline-flex items-center space-x-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
+                        <i class="fa-solid fa-print"></i>
+                        <span>Cetak Ringkasan</span>
+                    </button>
+                </div>
+            </div>
 
-# 2. Halaman Kelola Data Sekolah (Daftar & Cari)
-@app.route('/sekolah')
-def daftar_sekolah():
-    search = request.args.get('search', '')
-    conn = get_db_connection()
-    if search:
-        data = conn.execute(
-            "SELECT * FROM sekolah WHERE nama_sekolah LIKE ? OR npsn LIKE ? OR alamat LIKE ?",
-            (f'%{search}%', f'%{search}%', f'%{search}%')
-        ).fetchall()
-    else:
-        data = conn.execute('SELECT * FROM sekolah').fetchall()
-    conn.close()
-    return render_template('sekolah.html', data_sekolah=data, search=search)
+            <!-- Statistic KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Sekolah</p>
+                        <h3 class="text-3xl font-extrabold text-slate-900 mt-1" id="statTotalSekolah">0</h3>
+                        <p class="text-xs text-emerald-600 mt-1 font-medium"><i class="fa-solid fa-circle-check mr-1"></i> Terverifikasi Kantor</p>
+                    </div>
+                    <div class="p-3.5 bg-blue-50 text-blue-600 rounded-xl">
+                        <i class="fa-solid fa-school text-2xl"></i>
+                    </div>
+                </div>
 
-# 3. Tambah Data Sekolah
-@app.route('/sekolah/tambah', methods=['POST'])
-def tambah_sekolah():
-    if request.method == 'POST':
-        npsn = request.form['npsn']
-        nama_sekolah = request.form['nama_sekolah']
-        jenjang = request.form['jenjang']
-        status = request.form['status']
-        akreditasi = request.form['akreditasi']
-        alamat = request.form['alamat']
-        jumlah_siswa = request.form['jumlah_siswa'] or 0
-        jumlah_guru = request.form['jumlah_guru'] or 0
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Guru & Staff</p>
+                        <h3 class="text-3xl font-extrabold text-slate-900 mt-1" id="statTotalGuru">0</h3>
+                        <p class="text-xs text-slate-500 mt-1 font-medium">Tenaga Pendidik</p>
+                    </div>
+                    <div class="p-3.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <i class="fa-solid fa-chalkboard-user text-2xl"></i>
+                    </div>
+                </div>
 
-        conn = get_db_connection()
-        try:
-            conn.execute('''
-                INSERT INTO sekolah (npsn, nama_sekolah, jenjang, status, akreditasi, alamat, jumlah_siswa, jumlah_guru)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (npsn, nama_sekolah, jenjang, status, akreditasi, alamat, jumlah_siswa, jumlah_guru))
-            conn.commit()
-            flash('Data sekolah berhasil ditambahkan!', 'success')
-        except sqlite3.IntegrityError:
-            flash('Error: NPSN sudah terdaftar!', 'danger')
-        finally:
-            conn.close()
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Siswa Aktif</p>
+                        <h3 class="text-3xl font-extrabold text-slate-900 mt-1" id="statTotalSiswa">0</h3>
+                        <p class="text-xs text-emerald-600 mt-1 font-medium"><i class="fa-solid fa-arrow-up mr-1"></i> Tipe Terdaftar NISN</p>
+                    </div>
+                    <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <i class="fa-solid fa-user-graduate text-2xl"></i>
+                    </div>
+                </div>
 
-    return redirect(url_for('daftar_sekolah'))
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Akreditasi A</p>
+                        <h3 class="text-3xl font-extrabold text-slate-900 mt-1" id="statAkreditasiA">0%</h3>
+                        <p class="text-xs text-amber-600 mt-1 font-medium"><i class="fa-solid fa-award mr-1"></i> Standar Unggul</p>
+                    </div>
+                    <div class="p-3.5 bg-amber-50 text-amber-600 rounded-xl">
+                        <i class="fa-solid fa-medal text-2xl"></i>
+                    </div>
+                </div>
+            </div>
 
-# 4. Hapus Data Sekolah
-@app.route('/sekolah/hapus/<int:id>')
-def hapus_sekolah(id):
-    conn = get_db_connection()
-    conn.execute('DELETE FROM sekolah WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
-    flash('Data sekolah berhasil dihapus.', 'warning')
-    return redirect(url_for('daftar_sekolah'))
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Sebaran Siswa Per Jenjang</h2>
+                            <p class="text-xs text-slate-500">Jumlah siswa terdaftar pada jenjang SD, SMP, SMA, SMK</p>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chartSiswaJenjang"></canvas>
+                    </div>
+                </div>
 
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True, port=5000)
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Distribusi Akreditasi</h2>
+                            <p class="text-xs text-slate-500">Persentase status akreditasi</p>
+                        </div>
+                    </div>
+                    <div class="h-64 relative flex items-center justify-center">
+                        <canvas id="chartAkreditasi"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ringkasan Data Top Sekolah -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 border-b border-slate-200 flex justify-between items-center">
+                    <h2 class="text-base font-bold text-slate-900">Sekolah Jumlah Siswa Terbanyak</h2>
+                    <button onclick="switchTab('sekolah')" class="text-sm font-semibold text-blue-600 hover:text-blue-800">
+                        Lihat Semua Data &rarr;
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="px-6 py-3">NPSN</th>
+                                <th class="px-6 py-3">Nama Sekolah</th>
+                                <th class="px-6 py-3">Jenjang</th>
+                                <th class="px-6 py-3">Status</th>
+                                <th class="px-6 py-3">Siswa</th>
+                                <th class="px-6 py-3">Akreditasi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topSchoolsTable" class="divide-y divide-slate-200">
+                            <!-- JS Generated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PAGE 2: DATA SEKOLAH VIEW ================= -->
+        <div id="view-sekolah" class="tab-content hidden space-y-6">
+            <!-- Header Section -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Master Data Sekolah</h1>
+                    <p class="text-slate-500 text-sm">Kelola, filter, edit, dan tambah data direktori sekolah.</p>
+                </div>
+                <button onclick="openModalTambah()" class="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Tambah Data Sekolah</span>
+                </button>
+            </div>
+
+            <!-- Search and Filters -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Cari Data</label>
+                        <div class="relative">
+                            <input type="text" id="filterSearch" oninput="applyFilters()" placeholder="Nama / NPSN / Alamat..." 
+                                class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Jenjang</label>
+                        <select id="filterJenjang" onchange="applyFilters()" class="w-full py-2 px-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                            <option value="">Semua Jenjang</option>
+                            <option value="SD">SD</option>
+                            <option value="SMP">SMP</option>
+                            <option value="SMA">SMA</option>
+                            <option value="SMK">SMK</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Status</label>
+                        <select id="filterStatus" onchange="applyFilters()" class="w-full py-2 px-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                            <option value="">Semua Status</option>
+                            <option value="Negeri">Negeri</option>
+                            <option value="Swasta">Swasta</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Akreditasi</label>
+                        <select id="filterAkreditasi" onchange="applyFilters()" class="w-full py-2 px-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                            <option value="">Semua Akreditasi</option>
+                            <option value="A">Akreditasi A</option>
+                            <option value="B">Akreditasi B</option>
+                            <option value="C">Akreditasi C</option>
+                            <option value="Belum">Belum Terakreditasi</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm text-slate-700">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="px-6 py-3.5">NPSN</th>
+                                <th class="px-6 py-3.5">Nama Sekolah</th>
+                                <th class="px-6 py-3.5">Jenjang</th>
+                                <th class="px-6 py-3.5">Status</th>
+                                <th class="px-6 py-3.5">Akreditasi</th>
+                                <th class="px-6 py-3.5">Siswa</th>
+                                <th class="px-6 py-3.5">Alamat / Wilayah</th>
+                                <th class="px-6 py-3.5 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sekolahTableBody" class="divide-y divide-slate-200">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Table Pagination -->
+                <div class="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+                    <div id="paginationInfo">Menampilkan 0 data</div>
+                    <div class="flex items-center space-x-2">
+                        <button id="btnPrev" onclick="changePage(-1)" class="px-3 py-1.5 border border-slate-300 bg-white hover:bg-slate-100 rounded-md font-medium text-slate-700 disabled:opacity-50 transition">
+                            <i class="fa-solid fa-chevron-left mr-1"></i> Sebelumnya
+                        </button>
+                        <span id="pageNumbers" class="px-2 font-semibold">1</span>
+                        <button id="btnNext" onclick="changePage(1)" class="px-3 py-1.5 border border-slate-300 bg-white hover:bg-slate-100 rounded-md font-medium text-slate-700 disabled:opacity-50 transition">
+                            Berikutnya <i class="fa-solid fa-chevron-right ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PAGE 3: GURU VIEW ================= -->
+        <div id="view-guru" class="tab-content hidden space-y-4">
+            <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
+                <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">Modul Pendataan Guru</h2>
+                <p class="text-slate-500 text-sm max-w-md mx-auto mt-2">Pusat pendataan NUPTK, status kepegawaian (PNS, PPPK, Honorer), serta riwayat sertifikasi pendidik.</p>
+            </div>
+        </div>
+
+        <!-- ================= PAGE 4: LAPORAN VIEW ================= -->
+        <div id="view-laporan" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">Cetak & Ekspor Dokumen Kantor</h2>
+                <p class="text-slate-500 text-sm mb-6">Unduh data dalam format PDF, Excel, atau format dokumen cetak resmi.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="border border-slate-200 rounded-xl p-5 hover:border-blue-500 transition">
+                        <i class="fa-solid fa-file-excel text-emerald-600 text-3xl mb-3"></i>
+                        <h3 class="font-bold text-slate-800">Format Excel (.xlsx)</h3>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">Export seluruh baris data sekolah aktif ke dalam tabel Excel.</p>
+                        <button onclick="exportData('Excel')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold py-2 rounded-lg transition">Unduh Excel</button>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-xl p-5 hover:border-blue-500 transition">
+                        <i class="fa-solid fa-file-pdf text-red-500 text-3xl mb-3"></i>
+                        <h3 class="font-bold text-slate-800">Laporan PDF</h3>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">Ringkasan berkas PDF untuk arsip resmi kantor.</p>
+                        <button onclick="exportData('PDF')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold py-2 rounded-lg transition">Unduh PDF</button>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-xl p-5 hover:border-blue-500 transition">
+                        <i class="fa-solid fa-print text-slate-800 text-3xl mb-3"></i>
+                        <h3 class="font-bold text-slate-800">Cetak Langsung</h3>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">Cetak dokumen ringkasan melalui printer kantor.</p>
+                        <button onclick="window.print()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 rounded-lg transition">Cetak Ringkasan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL FORM: TAMBAH / EDIT SEKOLAH -->
+    <div id="modalSekolah" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden transform transition-all scale-95" id="modalContainer">
+            <div class="bg-navy-900 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="font-bold text-lg" id="modalTitle">Tambah Data Sekolah Baru</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="formSekolah" onsubmit="saveSekolah(event)" class="p-6 space-y-4">
+                <input type="hidden" id="schoolId">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">NPSN *</label>
+                        <input type="text" id="inputNpsn" required pattern="[0-9]{8}" placeholder="8 Digit Angka (misal: 20101234)" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Sekolah *</label>
+                        <input type="text" id="inputNama" required placeholder="Contoh: SMAN 1 Jakarta" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Jenjang *</label>
+                        <select id="inputJenjang" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                            <option value="SD">SD</option>
+                            <option value="SMP">SMP</option>
+                            <option value="SMA">SMA</option>
+                            <option value="SMK">SMK</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Status *</label>
+                        <select id="inputStatus" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                            <option value="Negeri">Negeri</option>
+                            <option value="Swasta">Swasta</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Akreditasi *</label>
+                        <select id="inputAkreditasi" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                            <option value="A">Akreditasi A</option>
+                            <option value="B">Akreditasi B</option>
+                            <option value="C">Akreditasi C</option>
+                            <option value="Belum">Belum Terakreditasi</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Kepala Sekolah</label>
+                        <input type="text" id="inputKepala" placeholder="Nama Lengkap & Gelar" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Siswa *</label>
+                        <input type="number" id="inputSiswa" required min="1" placeholder="Jumlah Total Siswa" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Alamat / Wilayah *</label>
+                        <input type="text" id="inputAlamat" required placeholder="Kota / Wilayah" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">No. Telp Sekolah</label>
+                        <input type="text" id="inputTelp" placeholder="(021) xxx-xxxx" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-100 transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition">
+                        Simpan Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DETAIL SEKOLAH -->
+    <div id="modalDetail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div class="bg-navy-900 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="font-bold text-lg" id="detailNama">Detail Sekolah</h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4 text-sm" id="detailContent">
+                <!-- Content via JS -->
+            </div>
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 text-right">
+                <button onclick="closeDetailModal()" class="px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-900">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // Master Data Initial Array
+        let dataSekolah = [
+            { id: 1, npsn: "20101234", nama: "SMAN 1 Jakarta", jenjang: "SMA", status: "Negeri", akreditasi: "A", siswa: 1024, kepala: "Drs. M. Sutrisno, M.Pd", alamat: "Jakarta Pusat", telp: "(021) 3865123", guru: 68 },
+            { id: 2, npsn: "20502345", nama: "SMPN 5 Surabaya", jenjang: "SMP", status: "Negeri", akreditasi: "A", siswa: 850, kepala: "Hj. Endang Rahayu, S.Pd", alamat: "Surabaya", telp: "(031) 5342111", guru: 52 },
+            { id: 3, npsn: "20203456", nama: "SDN 01 Bandung", jenjang: "SD", status: "Negeri", akreditasi: "A", siswa: 420, kepala: "Asep Sunandar, M.Pd", alamat: "Bandung", telp: "(022) 4201234", guru: 24 },
+            { id: 4, npsn: "69704567", nama: "SMK Telkom Semarang", jenjang: "SMK", status: "Swasta", akreditasi: "A", siswa: 1250, kepala: "Ir. Budi Santoso", alamat: "Semarang", telp: "(024) 8412345", guru: 80 },
+            { id: 5, npsn: "20305678", nama: "SMAN 3 Yogyakarta", jenjang: "SMA", status: "Negeri", akreditasi: "A", siswa: 910, kepala: "Dra. Sri Wahyuni", alamat: "Yogyakarta", telp: "(0274) 512345", guru: 62 },
+            { id: 6, npsn: "20606789", nama: "SMP Islam Al-Azhar 1", jenjang: "SMP", status: "Swasta", akreditasi: "A", siswa: 640, kepala: "Dr. H. Ahmad Dahlan", alamat: "Jakarta Selatan", telp: "(021) 7209988", guru: 45 },
+            { id: 7, npsn: "20107890", nama: "SD Bina Nusantara", jenjang: "SD", status: "Swasta", akreditasi: "B", siswa: 380, kepala: "Maria Christina, M.Ed", alamat: "Jakarta Barat", telp: "(021) 5380000", guru: 28 },
+            { id: 8, npsn: "69808901", nama: "SMKN 2 Malang", jenjang: "SMK", status: "Negeri", akreditasi: "A", siswa: 1420, kepala: "Drs. Bambang Wijaya", alamat: "Malang", telp: "(0341) 551234", guru: 95 }
+        ];
+
+        let currentPage = 1;
+        const pageSize = 5;
+        let filteredData = [...dataSekolah];
+
+        let chartSiswa = null;
+        let chartAkreditasiRef = null;
+
+        window.onload = function() {
+            renderDashboard();
+            applyFilters();
+            initCharts();
+
+            document.getElementById('globalSearch').addEventListener('input', function(e) {
+                document.getElementById('filterSearch').value = e.target.value;
+                switchTab('sekolah');
+                applyFilters();
+            });
+        };
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-slate-300', 'hover:bg-navy-700');
+            });
+
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-300', 'hover:bg-navy-700');
+                activeBtn.classList.add('bg-blue-600', 'text-white');
+            }
+        }
+
+        function renderDashboard() {
+            const totalSekolah = dataSekolah.length;
+            const totalSiswa = dataSekolah.reduce((acc, curr) => acc + parseInt(curr.siswa || 0), 0);
+            const totalGuru = dataSekolah.reduce((acc, curr) => acc + parseInt(curr.guru || 35), 0);
+            const countA = dataSekolah.filter(d => d.akreditasi === 'A').length;
+            const percentA = totalSekolah > 0 ? Math.round((countA / totalSekolah) * 100) : 0;
+
+            document.getElementById('statTotalSekolah').innerText = totalSekolah.toLocaleString('id-ID');
+            document.getElementById('statTotalSiswa').innerText = totalSiswa.toLocaleString('id-ID');
+            document.getElementById('statTotalGuru').innerText = totalGuru.toLocaleString('id-ID');
+            document.getElementById('statAkreditasiA').innerText = percentA + "%";
+
+            const top5 = [...dataSekolah].sort((a, b) => b.siswa - a.siswa).slice(0, 5);
+            const topTbody = document.getElementById('topSchoolsTable');
+            topTbody.innerHTML = '';
+
+            top5.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="px-6 py-3.5 font-mono text-xs font-semibold text-slate-600">${s.npsn}</td>
+                    <td class="px-6 py-3.5 font-medium text-slate-900">${s.nama}</td>
+                    <td class="px-6 py-3.5"><span class="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-bold">${s.jenjang}</span></td>
+                    <td class="px-6 py-3.5 text-xs">${s.status}</td>
+                    <td class="px-6 py-3.5 font-semibold text-slate-800">${s.siswa.toLocaleString('id-ID')} Siswa</td>
+                    <td class="px-6 py-3.5">${getBadgeAkreditasi(s.akreditasi)}</td>
+                `;
+                topTbody.appendChild(tr);
+            });
+        }
+
+        function initCharts() {
+            const jenjangLabels = ['SD', 'SMP', 'SMA', 'SMK'];
+            const siswaPerJenjang = jenjangLabels.map(j => {
+                return dataSekolah
+                    .filter(d => d.jenjang === j)
+                    .reduce((sum, item) => sum + parseInt(item.siswa || 0), 0);
+            });
+
+            const ctx1 = document.getElementById('chartSiswaJenjang').getContext('2d');
+            chartSiswa = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: jenjangLabels,
+                    datasets: [{
+                        label: 'Total Siswa',
+                        data: siswaPerJenjang,
+                        backgroundColor: ['#3b82f6', '#6366f1', '#10b981', '#f59e0b'],
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            const akredA = dataSekolah.filter(d => d.akreditasi === 'A').length;
+            const akredB = dataSekolah.filter(d => d.akreditasi === 'B').length;
+            const akredC = dataSekolah.filter(d => d.akreditasi === 'C').length;
+            const akredBelum = dataSekolah.filter(d => d.akreditasi === 'Belum').length;
+
+            const ctx2 = document.getElementById('chartAkreditasi').getContext('2d');
+            chartAkreditasiRef = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Akreditasi A', 'Akreditasi B', 'Akreditasi C', 'Belum Terakreditasi'],
+                    datasets: [{
+                        data: [akredA, akredB, akredC, akredBelum],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#94a3b8']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (!chartSiswa || !chartAkreditasiRef) return;
+
+            const jenjangLabels = ['SD', 'SMP', 'SMA', 'SMK'];
+            const siswaPerJenjang = jenjangLabels.map(j => {
+                return dataSekolah
+                    .filter(d => d.jenjang === j)
+                    .reduce((sum, item) => sum + parseInt(item.siswa || 0), 0);
+            });
+            chartSiswa.data.datasets[0].data = siswaPerJenjang;
+            chartSiswa.update();
+
+            const akredA = dataSekolah.filter(d => d.akreditasi === 'A').length;
+            const akredB = dataSekolah.filter(d => d.akreditasi === 'B').length;
+            const akredC = dataSekolah.filter(d => d.akreditasi === 'C').length;
+            const akredBelum = dataSekolah.filter(d => d.akreditasi === 'Belum').length;
+            chartAkreditasiRef.data.datasets[0].data = [akredA, akredB, akredC, akredBelum];
+            chartAkreditasiRef.update();
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('filterSearch').value.toLowerCase();
+            const jenjang = document.getElementById('filterJenjang').value;
+            const status = document.getElementById('filterStatus').value;
+            const akreditasi = document.getElementById('filterAkreditasi').value;
+
+            filteredData = dataSekolah.filter(item => {
+                const matchSearch = item.nama.toLowerCase().includes(search) || 
+                                    item.npsn.includes(search) || 
+                                    item.alamat.toLowerCase().includes(search);
+                const matchJenjang = jenjang === "" || item.jenjang === jenjang;
+                const matchStatus = status === "" || item.status === status;
+                const matchAkreditasi = akreditasi === "" || item.akreditasi === akreditasi;
+
+                return matchSearch && matchJenjang && matchStatus && matchAkreditasi;
+            });
+
+            currentPage = 1;
+            renderSekolahTable();
+        }
+
+        function renderSekolahTable() {
+            const tbody = document.getElementById('sekolahTableBody');
+            tbody.innerHTML = '';
+
+            const total = filteredData.length;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, total);
+            const pageData = filteredData.slice(startIndex, endIndex);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-slate-400">
+                            <i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>
+                            Tidak ada data sekolah ditemukan.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                pageData.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+                    tr.innerHTML = `
+                        <td class="px-6 py-3.5 font-mono text-xs font-bold text-slate-600">${item.npsn}</td>
+                        <td class="px-6 py-3.5 font-semibold text-slate-900">${item.nama}</td>
+                        <td class="px-6 py-3.5"><span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-bold">${item.jenjang}</span></td>
+                        <td class="px-6 py-3.5 text-xs text-slate-600">${item.status}</td>
+                        <td class="px-6 py-3.5">${getBadgeAkreditasi(item.akreditasi)}</td>
+                        <td class="px-6 py-3.5 font-medium text-slate-800">${parseInt(item.siswa).toLocaleString('id-ID')}</td>
+                        <td class="px-6 py-3.5 text-xs text-slate-500">${item.alamat}</td>
+                        <td class="px-6 py-3.5 text-center space-x-1">
+                            <button onclick="viewDetail(${item.id})" title="Detail" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition"><i class="fa-solid fa-eye"></i></button>
+                            <button onclick="editSekolah(${item.id})" title="Edit" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteSekolah(${item.id})" title="Hapus" class="p-1.5 text-red-600 hover:bg-red-50 rounded transition"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('paginationInfo').innerText = `Menampilkan ${total > 0 ? startIndex + 1 : 0} - ${endIndex} dari ${total} sekolah`;
+            document.getElementById('pageNumbers').innerText = `${currentPage} / ${totalPages}`;
+            document.getElementById('btnPrev').disabled = (currentPage === 1);
+            document.getElementById('btnNext').disabled = (currentPage === totalPages || totalPages === 0);
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            renderSekolahTable();
+        }
+
+        function getBadgeAkreditasi(akreditasi) {
+            switch(akreditasi) {
+                case 'A': return '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">A (Unggul)</span>';
+                case 'B': return '<span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">B (Baik)</span>';
+                case 'C': return '<span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-bold rounded-full">C (Cukup)</span>';
+                default: return '<span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-full">Belum</span>';
+            }
+        }
+
+        function openModalTambah() {
+            document.getElementById('formSekolah').reset();
+            document.getElementById('schoolId').value = '';
+            document.getElementById('modalTitle').innerText = 'Tambah Data Sekolah Baru';
+            showModal();
+        }
+
+        function editSekolah(id) {
+            const item = dataSekolah.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('schoolId').value = item.id;
+            document.getElementById('inputNpsn').value = item.npsn;
+            document.getElementById('inputNama').value = item.nama;
+            document.getElementById('inputJenjang').value = item.jenjang;
+            document.getElementById('inputStatus').value = item.status;
+            document.getElementById('inputAkreditasi').value = item.akreditasi;
+            document.getElementById('inputKepala').value = item.kepala || '';
+            document.getElementById('inputSiswa').value = item.siswa;
+            document.getElementById('inputAlamat').value = item.alamat;
+            document.getElementById('inputTelp').value = item.telp || '';
+
+            document.getElementById('modalTitle').innerText = 'Edit Data Sekolah';
+            showModal();
+        }
+
+        function saveSekolah(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('schoolId').value;
+            const npsn = document.getElementById('inputNpsn').value.trim();
+            const nama = document.getElementById('inputNama').value.trim();
+            const jenjang = document.getElementById('inputJenjang').value;
+            const status = document.getElementById('inputStatus').value;
+            const akreditasi = document.getElementById('inputAkreditasi').value;
+            const kepala = document.getElementById('inputKepala').value.trim();
+            const siswa = parseInt(document.getElementById('inputSiswa').value) || 0;
+            const alamat = document.getElementById('inputAlamat').value.trim();
+            const telp = document.getElementById('inputTelp').value.trim();
+
+            if (id) {
+                const index = dataSekolah.findIndex(d => d.id == id);
+                if (index !== -1) {
+                    dataSekolah[index] = { ...dataSekolah[index], npsn, nama, jenjang, status, akreditasi, kepala, siswa, alamat, telp };
+                    showToast('Data sekolah berhasil diperbarui!', 'success');
+                }
+            } else {
+                const newId = dataSekolah.length > 0 ? Math.max(...dataSekolah.map(d => d.id)) + 1 : 1;
+                dataSekolah.unshift({
+                    id: newId, npsn, nama, jenjang, status, akreditasi, kepala, siswa, alamat, telp, guru: Math.round(siswa / 15)
+                });
+                showToast('Sekolah baru berhasil ditambahkan!', 'success');
+            }
+
+            closeModal();
+            renderDashboard();
+            applyFilters();
+            updateCharts();
+        }
+
+        function deleteSekolah(id) {
+            const item = dataSekolah.find(d => d.id === id);
+            if (!item) return;
+
+            if (confirm(`Yakin ingin menghapus data "${item.nama}"?`)) {
+                dataSekolah = dataSekolah.filter(d => d.id !== id);
+                showToast('Data sekolah telah dihapus.', 'info');
+                renderDashboard();
+                applyFilters();
+                updateCharts();
+            }
+        }
+
+        function viewDetail(id) {
+            const item = dataSekolah.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('detailNama').innerText = item.nama;
+            document.getElementById('detailContent').innerHTML = `
+                <div class="grid grid-cols-2 gap-3">
+                    <div><span class="text-xs text-slate-500 block">NPSN</span><strong>${item.npsn}</strong></div>
+                    <div><span class="text-xs text-slate-500 block">Jenjang & Status</span><strong>${item.jenjang} (${item.status})</strong></div>
+                    <div><span class="text-xs text-slate-500 block">Akreditasi</span>${getBadgeAkreditasi(item.akreditasi)}</div>
+                    <div><span class="text-xs text-slate-500 block">Jumlah Siswa</span><strong>${item.siswa.toLocaleString('id-ID')} Siswa</strong></div>
+                    <div class="col-span-2"><span class="text-xs text-slate-500 block">Kepala Sekolah</span><strong>${item.kepala || '-'}</strong></div>
+                    <div><span class="text-xs text-slate-500 block">Telepon</span><strong>${item.telp || '-'}</strong></div>
+                    <div><span class="text-xs text-slate-500 block">Estimasi Guru</span><strong>${item.guru || 30} Orang</strong></div>
+                    <div class="col-span-2"><span class="text-xs text-slate-500 block">Alamat / Wilayah</span><strong>${item.alamat}</strong></div>
+                </div>
+            `;
+
+            const modal = document.getElementById('modalDetail');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeDetailModal() {
+            const modal = document.getElementById('modalDetail');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function showModal() {
+            const modal = document.getElementById('modalSekolah');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modalSekolah');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function exportData(type) {
+            showToast(`Simulasi export data ke format ${type} berhasil dijalankan.`, 'success');
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toastNotification');
+            const icon = document.getElementById('toastIcon');
+            const text = document.getElementById('toastMessage');
+
+            text.innerText = msg;
+            toast.className = `p-4 rounded-lg shadow-md transition-all duration-300 flex items-center justify-between text-white ${type === 'success' ? 'bg-emerald-600' : 'bg-blue-600'}`;
+            icon.className = `fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-info'} text-lg`;
+
+            toast.classList.remove('hidden');
+            setTimeout(() => hideToast(), 3500);
+        }
+
+        function hideToast() {
+            document.getElementById('toastNotification').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
