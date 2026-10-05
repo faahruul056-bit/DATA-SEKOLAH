@@ -1,0 +1,108 @@
+import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, flash
+
+app = Flask(__name__)
+app.secret_key = 'kunci_rahasia_kantor_123'  # Untuk flash message
+
+DATABASE = 'database_sekolah.db'
+
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row  # Mengembalikan hasil sebagai dictionary
+    return conn
+
+# Inisialisasi Database jika belum ada
+def init_db():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS sekolah (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            npsn TEXT UNIQUE NOT NULL,
+            nama_sekolah TEXT NOT NULL,
+            jenjang TEXT NOT NULL,
+            status TEXT NOT NULL,
+            akreditasi TEXT,
+            alamat TEXT,
+            jumlah_siswa INTEGER DEFAULT 0,
+            jumlah_guru INTEGER DEFAULT 0
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# ---------------- ROUTING / HALAMAN ---------------- #
+
+# 1. Dashboard Utama
+@app.route('/')
+def index():
+    conn = get_db_connection()
+    total_sekolah = conn.execute('SELECT COUNT(*) FROM sekolah').fetchone()[0]
+    total_siswa = conn.execute('SELECT SUM(jumlah_siswa) FROM sekolah').fetchone()[0] or 0
+    total_guru = conn.execute('SELECT SUM(jumlah_guru) FROM sekolah').fetchone()[0] or 0
+    sekolah_negeri = conn.execute("SELECT COUNT(*) FROM sekolah WHERE status='Negeri'").fetchone()[0]
+    sekolah_swasta = conn.execute("SELECT COUNT(*) FROM sekolah WHERE status='Swasta'").fetchone()[0]
+    conn.close()
+
+    return render_template('index.html', 
+                           total_sekolah=total_sekolah, 
+                           total_siswa=total_siswa, 
+                           total_guru=total_guru,
+                           sekolah_negeri=sekolah_negeri,
+                           sekolah_swasta=sekolah_swasta)
+
+# 2. Halaman Kelola Data Sekolah (Daftar & Cari)
+@app.route('/sekolah')
+def daftar_sekolah():
+    search = request.args.get('search', '')
+    conn = get_db_connection()
+    if search:
+        data = conn.execute(
+            "SELECT * FROM sekolah WHERE nama_sekolah LIKE ? OR npsn LIKE ? OR alamat LIKE ?",
+            (f'%{search}%', f'%{search}%', f'%{search}%')
+        ).fetchall()
+    else:
+        data = conn.execute('SELECT * FROM sekolah').fetchall()
+    conn.close()
+    return render_template('sekolah.html', data_sekolah=data, search=search)
+
+# 3. Tambah Data Sekolah
+@app.route('/sekolah/tambah', methods=['POST'])
+def tambah_sekolah():
+    if request.method == 'POST':
+        npsn = request.form['npsn']
+        nama_sekolah = request.form['nama_sekolah']
+        jenjang = request.form['jenjang']
+        status = request.form['status']
+        akreditasi = request.form['akreditasi']
+        alamat = request.form['alamat']
+        jumlah_siswa = request.form['jumlah_siswa'] or 0
+        jumlah_guru = request.form['jumlah_guru'] or 0
+
+        conn = get_db_connection()
+        try:
+            conn.execute('''
+                INSERT INTO sekolah (npsn, nama_sekolah, jenjang, status, akreditasi, alamat, jumlah_siswa, jumlah_guru)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (npsn, nama_sekolah, jenjang, status, akreditasi, alamat, jumlah_siswa, jumlah_guru))
+            conn.commit()
+            flash('Data sekolah berhasil ditambahkan!', 'success')
+        except sqlite3.IntegrityError:
+            flash('Error: NPSN sudah terdaftar!', 'danger')
+        finally:
+            conn.close()
+
+    return redirect(url_for('daftar_sekolah'))
+
+# 4. Hapus Data Sekolah
+@app.route('/sekolah/hapus/<int:id>')
+def hapus_sekolah(id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM sekolah WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    flash('Data sekolah berhasil dihapus.', 'warning')
+    return redirect(url_for('daftar_sekolah'))
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True, port=5000)
