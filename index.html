@@ -11,7 +11,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-        // Proteksi Halaman: Cek apakah user sudah login
+        // Check Auth Session
         const currentUser = JSON.parse(localStorage.getItem('angkasa_user'));
         if (!currentUser) {
             window.location.href = 'login.html';
@@ -43,10 +43,10 @@
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800">
 
-    <!-- SIDEBAR NAVIGATION -->
+    <!-- SIDEBAR -->
     <aside class="w-72 bg-angkasa-darkBlue text-white flex flex-col justify-between flex-shrink-0 shadow-xl z-20">
         <div class="flex flex-col h-full">
-            <!-- Brand Header -->
+            <!-- Brand -->
             <div class="p-6 border-b border-slate-700/60 bg-angkasa-blue/30">
                 <div class="flex items-center space-x-3">
                     <div class="p-2.5 bg-angkasa-orange rounded-xl text-white shadow-lg shadow-angkasa-orange/30">
@@ -59,39 +59,11 @@
                 </div>
             </div>
 
-            <!-- Nav Links -->
-            <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
-                <a href="#" onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-angkasa-orange text-white shadow-md shadow-angkasa-orange/20">
-                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                    <span>Executive Dashboard</span>
-                </a>
-                <a href="#" onclick="switchTab('siswa')" id="nav-siswa" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
-                    <i data-lucide="users" class="w-5 h-5"></i>
-                    <span>Peserta Didik</span>
-                </a>
-                <a href="#" onclick="switchTab('sdm')" id="nav-sdm" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
-                    <i data-lucide="briefcase" class="w-5 h-5"></i>
-                    <span>Analisis SDM</span>
-                </a>
-                <a href="#" onclick="switchTab('rombel')" id="nav-rombel" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
-                    <i data-lucide="layers" class="w-5 h-5"></i>
-                    <span>Analisis Rombel</span>
-                </a>
-                <a href="#" onclick="switchTab('keuangan')" id="nav-keuangan" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
-                    <i data-lucide="wallet" class="w-5 h-5"></i>
-                    <span>DOP & DSP</span>
-                </a>
-                <a href="#" onclick="switchTab('compare')" id="nav-compare" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
-                    <i data-lucide="git-compare" class="w-5 h-5"></i>
-                    <span>Compare Schools</span>
-                </a>
-                <a href="#" onclick="switchTab('trend')" id="nav-trend" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
-                    <i data-lucide="trending-up" class="w-5 h-5"></i>
-                    <span>Trend Analysis</span>
-                </a>
+            <!-- Dynamic Nav Menu based on Role -->
+            <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar" id="nav-container">
             </nav>
 
-            <!-- User Status & Logout Footer -->
+            <!-- User Footer -->
             <div class="p-4 mx-4 mb-4 bg-slate-800/80 rounded-2xl border border-slate-700/50">
                 <div class="flex items-center space-x-3 mb-3">
                     <div class="w-9 h-9 rounded-full bg-angkasa-blue flex items-center justify-center font-bold text-amber-400 border border-amber-400/30">
@@ -110,387 +82,172 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT AREA -->
+    <!-- MAIN CONTENT -->
     <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
-        
-        <!-- TOP HEADER BAR -->
         <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between z-10 shadow-sm">
             <div>
-                <h2 id="page-title" class="text-xl font-bold text-slate-900">Executive Dashboard Analitik</h2>
-                <p id="page-subtitle" class="text-xs text-slate-500 mt-0.5">Ringkasan performa dan pemantauan data seluruh sekolah Angkasa</p>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button onclick="window.print()" class="flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
-                    <i data-lucide="printer" class="w-4 h-4"></i>
-                    <span>Cetak Laporan</span>
-                </button>
-                <button onclick="alert('Fitur Export Excel Siap!')" class="flex items-center space-x-2 px-4 py-2 bg-angkasa-blue hover:bg-angkasa-darkBlue text-white rounded-xl text-xs font-semibold shadow-md shadow-angkasa-blue/20 transition">
-                    <i data-lucide="download" class="w-4 h-4"></i>
-                    <span>Export Data</span>
-                </button>
+                <h2 id="page-title" class="text-xl font-bold text-slate-900">Dashboard</h2>
+                <p id="page-subtitle" class="text-xs text-slate-500 mt-0.5">Sistem Informasi Data Sekolah Angkasa</p>
             </div>
         </header>
 
-        <!-- DASHBOARD CONTAINER -->
-        <div class="flex-1 overflow-y-auto p-8 space-y-6">
-
-            <!-- FILTER BAR -->
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center space-x-2 text-slate-700 font-bold text-xs uppercase tracking-wider">
-                        <i data-lucide="filter" class="w-4 h-4 text-angkasa-orange"></i>
-                        <span>Filter Data Analytics</span>
-                    </div>
-                    <button onclick="resetFilters()" class="text-xs font-medium text-angkasa-orange hover:underline flex items-center space-x-1">
-                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                        <span>Reset Filter</span>
-                    </button>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Tahun Ajaran</label>
-                        <select id="filter-tahun" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
-                            <option value="2026/2027" selected>2026/2027</option>
-                            <option value="2025/2026">2025/2026</option>
-                            <option value="2024/2025">2024/2025</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Jenjang</label>
-                        <select id="filter-jenjang" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
-                            <option value="ALL">Semua Jenjang</option>
-                            <option value="TK">TK</option>
-                            <option value="SD">SD</option>
-                            <option value="SMP">SMP</option>
-                            <option value="SMA">SMA</option>
-                            <option value="SMK">SMK</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Kodau / Area</label>
-                        <select id="filter-area" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
-                            <option value="ALL">Semua Kodau</option>
-                            <option value="Kodau I">Kodau I</option>
-                            <option value="Kodau II">Kodau II</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Cabang</label>
-                        <select id="filter-cabang" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
-                            <option value="ALL">Semua Cabang</option>
-                            <option value="Halim">Halim Perdanakusuma</option>
-                            <option value="ATS">Atang Senjaya</option>
-                            <option value="Iswahjudi">Iswahjudi</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Status Sekolah</label>
-                        <select id="filter-status" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
-                            <option value="ALL">Semua Status</option>
-                            <option value="Aktif">Aktif</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- KPI CARDS -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Peserta Didik</p>
-                            <h3 id="kpi-siswa" class="text-2xl font-extrabold text-slate-900 mt-1">2,959</h3>
-                        </div>
-                        <div class="p-2.5 bg-blue-50 text-angkasa-blue rounded-xl">
-                            <i data-lucide="users" class="w-5 h-5"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 flex items-center space-x-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
-                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
-                        <span>+5.8% YoY</span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pendidik (Guru)</p>
-                            <h3 id="kpi-pendidik" class="text-2xl font-extrabold text-slate-900 mt-1">178</h3>
-                        </div>
-                        <div class="p-2.5 bg-amber-50 text-angkasa-orange rounded-xl">
-                            <i data-lucide="user-check" class="w-5 h-5"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 flex items-center space-x-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
-                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
-                        <span>+3.2% YoY</span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rombongan Belajar</p>
-                            <h3 id="kpi-rombel" class="text-2xl font-extrabold text-slate-900 mt-1">92</h3>
-                        </div>
-                        <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-                            <i data-lucide="layers" class="w-5 h-5"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 flex items-center space-x-1.5 text-xs font-semibold text-slate-600 bg-slate-100 w-fit px-2.5 py-1 rounded-lg">
-                        <span>32 Siswa / Kelas</span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total DOP & DSP</p>
-                            <h3 id="kpi-keuangan" class="text-2xl font-extrabold text-slate-900 mt-1">Rp 5.79B</h3>
-                        </div>
-                        <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
-                            <i data-lucide="dollar-sign" class="w-5 h-5"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3 flex items-center space-x-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
-                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
-                        <span>+8.1% YoY</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AUTOMATED DATA INSIGHTS CARD -->
-            <div class="bg-gradient-to-r from-angkasa-darkBlue to-angkasa-blue text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
-                <div class="flex items-center space-x-3 mb-3">
-                    <div class="p-2 bg-amber-400 text-slate-900 rounded-xl font-bold">
-                        <i data-lucide="sparkles" class="w-5 h-5"></i>
-                    </div>
-                    <h3 class="font-bold text-base text-white">Automated Data Insights</h3>
-                </div>
-                <ul class="space-y-2 text-xs text-slate-200 pl-2">
-                    <li class="flex items-center space-x-2">
-                        <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
-                        <span>Jumlah peserta didik di seluruh sekolah Angkasa mengalami pertumbuhan sebesar <strong>5.8%</strong> dibandingkan TA 2025/2026.</span>
-                    </li>
-                    <li class="flex items-center space-x-2">
-                        <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
-                        <span>Rasio rata-rata ideal pendidik tercatat <strong>1 Guru : 16.6 Siswa</strong> (Sangat Baik).</span>
-                    </li>
-                    <li class="flex items-center space-x-2">
-                        <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
-                        <span>Sekolah dengan populasi terbesar adalah <strong>SMA Angkasa Halim</strong> dengan 690 peserta didik.</span>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- CHARTS SECTION -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Bar Chart -->
-                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="font-bold text-slate-800 text-sm">Distribusi Peserta Didik Per Sekolah</h4>
-                        <span class="text-xs text-slate-400 font-medium">TA 2026/2027</span>
-                    </div>
-                    <div class="h-64">
-                        <canvas id="barChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Doughnut Chart -->
-                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
-                    <div>
-                        <h4 class="font-bold text-slate-800 text-sm mb-4">Proporsi Gender Siswa</h4>
-                        <div class="h-48 relative flex items-center justify-center">
-                            <canvas id="doughnutChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100 text-center">
-                        <div class="p-2 bg-blue-50/50 rounded-xl">
-                            <p class="text-[10px] font-bold text-slate-400">LAKI-LAKI</p>
-                            <p class="text-sm font-bold text-angkasa-blue mt-0.5">1,530 (51.7%)</p>
-                        </div>
-                        <div class="p-2 bg-amber-50/50 rounded-xl">
-                            <p class="text-[10px] font-bold text-slate-400">PEREMPUAN</p>
-                            <p class="text-sm font-bold text-angkasa-orange mt-0.5">1,429 (48.3%)</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- DATA TABLE -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <h4 class="font-bold text-slate-800 text-sm">Rincian Data Analytics Sekolah</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">Data terintegrasi seluruh jenjang dan ranting</p>
-                    </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
-                                <th class="py-3.5 px-6">NPSN</th>
-                                <th class="py-3.5 px-6">Nama Sekolah</th>
-                                <th class="py-3.5 px-6">Jenjang</th>
-                                <th class="py-3.5 px-6">Cabang</th>
-                                <th class="py-3.5 px-6 text-center">Siswa</th>
-                                <th class="py-3.5 px-6 text-center">Guru</th>
-                                <th class="py-3.5 px-6 text-center">Rombel</th>
-                                <th class="py-3.5 px-6 text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
-                            <!-- JS Generated Rows -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
+        <div class="flex-1 overflow-y-auto p-8 space-y-6" id="content-container">
         </div>
     </main>
 
-    <!-- JS LOGIC ENGINE -->
     <script>
-        // Init Icons
         lucide.createIcons();
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw5CmgiR3d5poaHOpQqM5qijtKjqOxdMjTIA8ANadu5s5hMNznO4x9XKX3MsjzQKD5eSQ/exec';
 
-        // Load Session User Data
-        if (currentUser) {
-            document.getElementById('user-name').innerText = currentUser.name || 'User';
-            document.getElementById('user-role').innerText = currentUser.role || 'Operator';
-            document.getElementById('user-avatar').innerText = (currentUser.name || 'A').charAt(0).toUpperCase();
+        // Load Session
+        document.getElementById('user-name').innerText = currentUser.name || 'User';
+        document.getElementById('user-role').innerText = currentUser.role === 'YAYASAN' ? 'Pengurus Yayasan' : 'Operator Sekolah';
+        document.getElementById('user-avatar').innerText = (currentUser.name || 'A').charAt(0).toUpperCase();
+
+        const navContainer = document.getElementById('nav-container');
+        const contentContainer = document.getElementById('content-container');
+
+        if (currentUser.role === 'SEKOLAH') {
+            document.getElementById('page-title').innerText = "Form Input Data Sekolah";
+            document.getElementById('page-subtitle').innerText = `Input data periodik untuk: ${currentUser.school}`;
+
+            navContainer.innerHTML = `
+                <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm bg-angkasa-orange text-white shadow-md">
+                    <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    <span>Input Data Sekolah</span>
+                </a>
+            `;
+
+            contentContainer.innerHTML = `
+                <div class="max-w-2xl bg-white p-8 rounded-3xl border border-slate-200/80 shadow-sm">
+                    <h3 class="font-bold text-base text-slate-800 mb-1">Input / Update Data Periodic Sekolah</h3>
+                    <p class="text-xs text-slate-400 mb-6">Data yang diisi akan otomatis tersimpan di Database Google Sheets Yayasan.</p>
+                    
+                    <form onsubmit="handleInputData(event)" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nama Sekolah</label>
+                                <input type="text" id="input-nama" value="${currentUser.school}" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">NPSN</label>
+                                <input type="text" id="input-npsn" required placeholder="Contoh: 10100004" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Jenjang</label>
+                                <select id="input-jenjang" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                                    <option value="TK">TK</option>
+                                    <option value="SD">SD</option>
+                                    <option value="SMP">SMP</option>
+                                    <option value="SMA">SMA</option>
+                                    <option value="SMK">SMK</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Cabang</label>
+                                <input type="text" id="input-cabang" required placeholder="Halim / ATS / Iswahjudi" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tahun Ajaran</label>
+                                <input type="text" id="input-tahun" value="2026/2027" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                            </div>
+                        </div>
+
+                        <hr class="my-4 border-slate-100">
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Total Siswa</label>
+                                <input type="number" id="input-siswa" required placeholder="0" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Total Guru</label>
+                                <input type="number" id="input-guru" required placeholder="0" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Total Rombel</label>
+                                <input type="number" id="input-rombel" required placeholder="0" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Total DOP (Rp)</label>
+                                <input type="number" id="input-dop" required placeholder="Contoh: 150000000" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Total DSP (Rp)</label>
+                                <input type="number" id="input-dsp" required placeholder="Contoh: 90000000" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-submit-data" class="w-full py-3 bg-angkasa-blue hover:bg-angkasa-darkBlue text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-angkasa-blue/20 transition mt-4">
+                            Simpan Data Ke Google Sheets
+                        </button>
+                    </form>
+                </div>
+            `;
+        } else {
+            document.getElementById('page-title').innerText = "Executive Dashboard Analitik";
+            document.getElementById('page-subtitle').innerText = "Pemantauan & Analytics Data Seluruh Sekolah Angkasa";
+
+            navContainer.innerHTML = `
+                <a href="#" class="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm bg-angkasa-orange text-white shadow-md">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span>Executive Dashboard</span>
+                </a>
+            `;
+
+            contentContainer.innerHTML = `
+                <div class="bg-gradient-to-r from-angkasa-darkBlue to-angkasa-blue text-white p-6 rounded-2xl shadow-lg">
+                    <h3 class="font-bold text-base text-white mb-1">Selamat Datang, ${currentUser.name}</h3>
+                    <p class="text-xs text-slate-200">Anda berada di mode Pengurus Yayasan. Anda dapat melihat analitik dari data yang diinput oleh sekolah-sekolah.</p>
+                </div>
+            `;
+        }
+
+        async function handleInputData(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-data');
+            btn.disabled = true;
+            btn.innerText = "Menyimpan ke Google Sheets...";
+
+            const data = {
+                action: 'inputData',
+                npsn: document.getElementById('input-npsn').value,
+                nama: currentUser.school,
+                jenjang: document.getElementById('input-jenjang').value,
+                cabang: document.getElementById('input-cabang').value,
+                area: 'Kodau I',
+                tahun: document.getElementById('input-tahun').value,
+                siswa: document.getElementById('input-siswa').value,
+                guru: document.getElementById('input-guru').value,
+                rombel: document.getElementById('input-rombel').value,
+                dop: document.getElementById('input-dop').value,
+                dsp: document.getElementById('input-dsp').value
+            };
+
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                alert("Data Sekolah Berhasil Disimpan ke Google Sheets!");
+            } catch (err) {
+                alert("Gagal menyimpan data.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Simpan Data Ke Google Sheets";
+            }
         }
 
         function handleLogout() {
             localStorage.removeItem('angkasa_user');
             window.location.href = 'login.html';
         }
-
-        // Dummy Master Data
-        const masterData = [
-            { npsn: "10100001", nama: "TK Angkasa 01 Halim", jenjang: "TK", cabang: "Halim", area: "Kodau I", siswa: 142, guru: 12, rombel: 6, lk: 70, pr: 72 },
-            { npsn: "10100002", nama: "SD Angkasa 03 Halim", jenjang: "SD", cabang: "Halim", area: "Kodau I", siswa: 502, guru: 28, rombel: 16, lk: 255, pr: 247 },
-            { npsn: "10100003", nama: "SMP Angkasa Halim", jenjang: "SMP", cabang: "Halim", area: "Kodau I", siswa: 640, guru: 38, rombel: 19, lk: 320, pr: 320 },
-            { npsn: "10100004", nama: "SMA Angkasa Halim", jenjang: "SMA", cabang: "Halim", area: "Kodau I", siswa: 690, guru: 45, rombel: 21, lk: 340, pr: 350 },
-            { npsn: "10200001", nama: "SD Angkasa ATS", jenjang: "SD", cabang: "ATS", area: "Kodau I", siswa: 425, guru: 25, rombel: 13, lk: 215, pr: 210 },
-            { npsn: "10300001", nama: "SMK Angkasa Iswahjudi", jenjang: "SMK", cabang: "Iswahjudi", area: "Kodau II", siswa: 560, guru: 35, rombel: 17, lk: 330, pr: 230 }
-        ];
-
-        let barChartInstance = null;
-        let doughnutChartInstance = null;
-
-        function renderTable(data) {
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
-            data.forEach(item => {
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50/80 transition">
-                        <td class="py-3.5 px-6 font-mono text-slate-500">${item.npsn}</td>
-                        <td class="py-3.5 px-6 font-bold text-slate-900">${item.nama}</td>
-                        <td class="py-3.5 px-6"><span class="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg text-[10px]">${item.jenjang}</span></td>
-                        <td class="py-3.5 px-6">${item.cabang}</td>
-                        <td class="py-3.5 px-6 text-center font-bold text-angkasa-blue">${item.siswa}</td>
-                        <td class="py-3.5 px-6 text-center">${item.guru}</td>
-                        <td class="py-3.5 px-6 text-center">${item.rombel}</td>
-                        <td class="py-3.5 px-6 text-center">
-                            <button onclick="alert('Detail sekolah ${item.nama}')" class="px-3 py-1 bg-blue-50 text-angkasa-blue font-semibold hover:bg-angkasa-blue hover:text-white rounded-lg transition text-[11px]">Detail</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function renderCharts(data) {
-            const labels = data.map(d => d.nama);
-            const siswaData = data.map(d => d.siswa);
-
-            if (barChartInstance) barChartInstance.destroy();
-            const ctxBar = document.getElementById('barChart').getContext('2d');
-            barChartInstance = new Chart(ctxBar, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Peserta Didik',
-                        data: siswaData,
-                        backgroundColor: '#0F4C81',
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } }
-                }
-            });
-
-            const totalLk = data.reduce((acc, d) => acc + d.lk, 0);
-            const totalPr = data.reduce((acc, d) => acc + d.pr, 0);
-
-            if (doughnutChartInstance) doughnutChartInstance.destroy();
-            const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
-            doughnutChartInstance = new Chart(ctxDoughnut, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Laki-laki', 'Perempuan'],
-                    datasets: [{
-                        data: [totalLk, totalPr],
-                        backgroundColor: ['#0F4C81', '#F58220'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        function applyFilters() {
-            const jenjang = document.getElementById('filter-jenjang').value;
-            const area = document.getElementById('filter-area').value;
-            const cabang = document.getElementById('filter-cabang').value;
-
-            let filtered = masterData.filter(d => {
-                return (jenjang === 'ALL' || d.jenjang === jenjang) &&
-                       (area === 'ALL' || d.area === area) &&
-                       (cabang === 'ALL' || d.cabang === cabang);
-            });
-
-            const totalSiswa = filtered.reduce((acc, d) => acc + d.siswa, 0);
-            const totalGuru = filtered.reduce((acc, d) => acc + d.guru, 0);
-            const totalRombel = filtered.reduce((acc, d) => acc + d.rombel, 0);
-
-            document.getElementById('kpi-siswa').innerText = totalSiswa.toLocaleString();
-            document.getElementById('kpi-pendidik').innerText = totalGuru.toLocaleString();
-            document.getElementById('kpi-rombel').innerText = totalRombel.toLocaleString();
-
-            renderTable(filtered);
-            renderCharts(filtered);
-        }
-
-        function resetFilters() {
-            document.getElementById('filter-jenjang').value = 'ALL';
-            document.getElementById('filter-area').value = 'ALL';
-            document.getElementById('filter-cabang').value = 'ALL';
-            applyFilters();
-        }
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.nav-item').forEach(el => {
-                el.classList.remove('bg-angkasa-orange', 'text-white', 'shadow-md');
-                el.classList.add('text-slate-300');
-            });
-            const activeNav = document.getElementById(`nav-${tabName}`);
-            if(activeNav) {
-                activeNav.classList.add('bg-angkasa-orange', 'text-white', 'shadow-md');
-                activeNav.classList.remove('text-slate-300');
-            }
-        }
-
-        // Initial Load
-        applyFilters();
     </script>
 </body>
 </html>
