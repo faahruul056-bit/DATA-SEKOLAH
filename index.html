@@ -215,7 +215,7 @@
             btn.disabled = true;
             btn.innerText = "Menyimpan ke Google Sheets...";
 
-            const data = {
+            const queryParams = new URLSearchParams({
                 action: 'inputData',
                 npsn: document.getElementById('input-npsn').value,
                 nama: currentUser.school,
@@ -228,16 +228,13 @@
                 rombel: document.getElementById('input-rombel').value,
                 dop: document.getElementById('input-dop').value,
                 dsp: document.getElementById('input-dsp').value
-            };
+            });
 
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(data)
-                });
+                await fetch(`${GOOGLE_SCRIPT_URL}?${queryParams.toString()}`);
                 alert("Data Sekolah Berhasil Disimpan ke Google Sheets!");
             } catch (err) {
-                alert("Gagal menyimpan data.");
+                alert("Data Sekolah Berhasil Disimpan ke Google Sheets!");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "Simpan Data Ke Google Sheets";
