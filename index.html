@@ -1,749 +1,477 @@
-import os
-import io
-import csv
-import sqlite3
-from functools import wraps
-from flask import (
-    Flask, render_template_string, request, redirect, url_for, flash, session, send_file
-)
-
-app = Flask(__name__)
-app.secret_key = 'angkasa_secret_key_intelligence_2026'
-DATABASE = 'angkasa_intelligence.db'
-
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-# ---------------- 1. DATABASE INIT & SEEDER ---------------- #
-
-def init_db():
-    conn = get_db_connection()
-    c = conn.cursor()
-    
-    c.executescript('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('Admin', 'Viewer')),
-            nama TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS tahun_ajaran (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            kode TEXT UNIQUE NOT NULL,
-            is_active INTEGER DEFAULT 0
-        );
-
-        CREATE TABLE IF NOT EXISTS jenjang (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nama TEXT UNIQUE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS wilayah (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nama TEXT UNIQUE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS cabang (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            wilayah_id INTEGER,
-            nama TEXT NOT NULL,
-            FOREIGN KEY(wilayah_id) REFERENCES wilayah(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS ranting (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cabang_id INTEGER,
-            nama TEXT NOT NULL,
-            FOREIGN KEY(cabang_id) REFERENCES cabang(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS sekolah (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            npsn TEXT UNIQUE NOT NULL,
-            nama_sekolah TEXT NOT NULL,
-            jenjang_id INTEGER,
-            ranting_id INTEGER,
-            alamat TEXT,
-            FOREIGN KEY(jenjang_id) REFERENCES jenjang(id),
-            FOREIGN KEY(ranting_id) REFERENCES ranting(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS data_historis (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sekolah_id INTEGER,
-            tahun_id INTEGER,
-            total_siswa INTEGER DEFAULT 0,
-            siswa_lk INTEGER DEFAULT 0,
-            siswa_pr INTEGER DEFAULT 0,
-            pendidik INTEGER DEFAULT 0,
-            tendik INTEGER DEFAULT 0,
-            karyawan INTEGER DEFAULT 0,
-            rombel INTEGER DEFAULT 0,
-            dop_sekolah REAL DEFAULT 0,
-            dsp_sekolah REAL DEFAULT 0,
-            FOREIGN KEY(sekolah_id) REFERENCES sekolah(id),
-            FOREIGN KEY(tahun_id) REFERENCES tahun_ajaran(id),
-            UNIQUE(sekolah_id, tahun_id)
-        );
-    ''')
-
-    # Seed Default Users
-    c.execute("SELECT COUNT(*) FROM users")
-    if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO users (username, password, role, nama) VALUES ('admin', 'admin123', 'Admin', 'Administrator Angkasa')")
-        c.execute("INSERT INTO users (username, password, role, nama) VALUES ('viewer', 'viewer123', 'Viewer', 'Pengurus Yayasan')")
-
-    # Seed Master Data & Historical Dummy Metrics
-    c.execute("SELECT COUNT(*) FROM tahun_ajaran")
-    if c.fetchone()[0] == 0:
-        years = [('2024/2025', 0), ('2025/2026', 0), ('2026/2027', 1)]
-        c.executemany("INSERT INTO tahun_ajaran (kode, is_active) VALUES (?, ?)", years)
-
-        jenjang_list = [('TK',), ('SD',), ('SMP',), ('SMA',), ('SMK',)]
-        c.executemany("INSERT INTO jenjang (nama) VALUES (?)", jenjang_list)
-
-        wilayah_list = [('Kodau I',), ('Kodau II',), ('Kodau III',)]
-        c.executemany("INSERT INTO wilayah (nama) VALUES (?)", wilayah_list)
-
-        cabang_list = [(1, 'Cabang Halim Perdanakusuma'), (1, 'Cabang Atang Senjaya'), (2, 'Cabang Iswahjudi')]
-        c.executemany("INSERT INTO cabang (wilayah_id, nama) VALUES (?, ?)", cabang_list)
-
-        ranting_list = [(1, 'Ranting 01 Halim'), (1, 'Ranting 02 Halim'), (2, 'Ranting 01 ATS'), (3, 'Ranting 01 Iswahjudi')]
-        c.executemany("INSERT INTO ranting (cabang_id, nama) VALUES (?, ?)", ranting_list)
-
-        sekolah_list = [
-            ('10100001', 'TK Angkasa 01 Halim', 1, 1, 'Jl. Rajawali Halim'),
-            ('10100002', 'SD Angkasa 03 Halim', 2, 1, 'Jl. Garuda Halim'),
-            ('10100003', 'SMP Angkasa Halim', 3, 2, 'Jl. Merpati Halim'),
-            ('10100004', 'SMA Angkasa Halim', 4, 2, 'Jl. Trikora Halim'),
-            ('10200001', 'SD Angkasa ATS', 2, 3, 'Jl. Lanud Atang Senjaya Bogor'),
-            ('10300001', 'SMK Angkasa Iswahjudi', 5, 4, 'Jl. Lanud Iswahjudi Madiun')
-        ]
-        c.executemany("INSERT INTO sekolah (npsn, nama_sekolah, jenjang_id, ranting_id, alamat) VALUES (?, ?, ?, ?, ?)", sekolah_list)
-
-        historical_metrics = [
-            # 2024/2025 (tahun_id=1)
-            (1, 1, 120, 60, 60, 10, 2, 3, 6, 120000000, 80000000),
-            (2, 1, 450, 230, 220, 25, 4, 5, 15, 450000000, 300000000),
-            (3, 1, 580, 290, 290, 35, 5, 6, 18, 680000000, 450000000),
-            (4, 1, 620, 310, 310, 40, 6, 8, 20, 800000000, 520000000),
-            (5, 1, 380, 190, 190, 22, 3, 4, 12, 380000000, 250000000),
-            (6, 1, 510, 300, 210, 32, 5, 7, 16, 600000000, 400000000),
-            
-            # 2025/2026 (tahun_id=2)
-            (1, 2, 130, 65, 65, 11, 2, 3, 6, 130000000, 85000000),
-            (2, 2, 475, 240, 235, 26, 4, 5, 15, 480000000, 320000000),
-            (3, 2, 605, 300, 305, 36, 5, 6, 18, 710000000, 480000000),
-            (4, 2, 650, 325, 325, 42, 6, 8, 20, 850000000, 550000000),
-            (5, 2, 400, 200, 200, 23, 3, 4, 13, 410000000, 270000000),
-            (6, 2, 530, 310, 220, 33, 5, 7, 16, 630000000, 420000000),
-
-            # 2026/2027 (tahun_id=3)
-            (1, 3, 142, 70, 72, 12, 2, 3, 6, 145000000, 90000000),
-            (2, 3, 502, 255, 247, 28, 4, 5, 16, 520000000, 350000000),
-            (3, 3, 640, 320, 320, 38, 5, 7, 19, 780000000, 510000000),
-            (4, 3, 690, 340, 350, 45, 7, 9, 21, 920000000, 600000000),
-            (5, 3, 425, 215, 210, 25, 3, 5, 13, 450000000, 290000000),
-            (6, 3, 560, 330, 230, 35, 6, 8, 17, 680000000, 450000000),
-        ]
-        c.executemany('''
-            INSERT INTO data_historis 
-            (sekolah_id, tahun_id, total_siswa, siswa_lk, siswa_pr, pendidik, tendik, karyawan, rombel, dop_sekolah, dsp_sekolah)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', historical_metrics)
-
-    conn.commit()
-    conn.close()
-
-# ---------------- 2. ANALYTICS & HELPER ENGINE ---------------- #
-
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def get_filter_options():
-    conn = get_db_connection()
-    tahun = conn.execute("SELECT * FROM tahun_ajaran ORDER BY kode DESC").fetchall()
-    jenjang = conn.execute("SELECT * FROM jenjang ORDER BY nama").fetchall()
-    wilayah = conn.execute("SELECT * FROM wilayah ORDER BY nama").fetchall()
-    cabang = conn.execute("SELECT * FROM cabang ORDER BY nama").fetchall()
-    ranting = conn.execute("SELECT * FROM ranting ORDER BY nama").fetchall()
-    sekolah = conn.execute("SELECT * FROM sekolah ORDER BY nama_sekolah").fetchall()
-    conn.close()
-    return {
-        'tahun': tahun, 'jenjang': jenjang, 'wilayah': wilayah,
-        'cabang': cabang, 'ranting': ranting, 'sekolah': sekolah
-    }
-
-def get_filtered_data(filters):
-    conn = get_db_connection()
-    
-    tahun_id = filters.get('tahun_id')
-    if not tahun_id:
-        active_t = conn.execute("SELECT id FROM tahun_ajaran WHERE is_active=1").fetchone()
-        tahun_id = active_t['id'] if active_t else 1
-
-    query = '''
-        SELECT 
-            h.*, s.nama_sekolah, s.npsn, j.nama as jenjang_nama,
-            r.nama as ranting_nama, c.nama as cabang_nama, w.nama as wilayah_nama,
-            t.kode as tahun_kode
-        FROM data_historis h
-        JOIN sekolah s ON h.sekolah_id = s.id
-        JOIN jenjang j ON s.jenjang_id = j.id
-        JOIN ranting r ON s.ranting_id = r.id
-        JOIN cabang c ON r.cabang_id = c.id
-        JOIN wilayah w ON c.wilayah_id = w.id
-        JOIN tahun_ajaran t ON h.tahun_id = t.id
-        WHERE h.tahun_id = ?
-    '''
-    params = [tahun_id]
-
-    if filters.get('jenjang_id'):
-        query += " AND s.jenjang_id = ?"
-        params.append(filters.get('jenjang_id'))
-    if filters.get('wilayah_id'):
-        query += " AND w.id = ?"
-        params.append(filters.get('wilayah_id'))
-    if filters.get('cabang_id'):
-        query += " AND c.id = ?"
-        params.append(filters.get('cabang_id'))
-    if filters.get('ranting_id'):
-        query += " AND r.id = ?"
-        params.append(filters.get('ranting_id'))
-    if filters.get('sekolah_id'):
-        query += " AND s.id = ?"
-        params.append(filters.get('sekolah_id'))
-
-    data = conn.execute(query, params).fetchall()
-
-    prev_tahun_id = int(tahun_id) - 1
-    prev_query = query.replace("WHERE h.tahun_id = ?", "WHERE h.tahun_id = ?")
-    prev_params = [prev_tahun_id] + params[1:]
-    prev_data = conn.execute(prev_query, prev_params).fetchall()
-    
-    conn.close()
-    return data, prev_data, tahun_id
-
-def calculate_kpi_and_insights(current_data, prev_data):
-    def sum_key(dataset, key):
-        return sum(row[key] for row in dataset) if dataset else 0
-
-    curr_kpi = {
-        'total_sekolah': len(current_data),
-        'total_siswa': sum_key(current_data, 'total_siswa'),
-        'total_lk': sum_key(current_data, 'siswa_lk'),
-        'total_pr': sum_key(current_data, 'siswa_pr'),
-        'total_pendidik': sum_key(current_data, 'pendidik'),
-        'total_tendik': sum_key(current_data, 'tendik'),
-        'total_karyawan': sum_key(current_data, 'karyawan'),
-        'total_rombel': sum_key(current_data, 'rombel'),
-        'total_dop': sum_key(current_data, 'dop_sekolah'),
-        'total_dsp': sum_key(current_data, 'dsp_sekolah'),
-    }
-
-    prev_kpi = {
-        'total_siswa': sum_key(prev_data, 'total_siswa'),
-        'total_pendidik': sum_key(prev_data, 'pendidik'),
-        'total_rombel': sum_key(prev_data, 'rombel'),
-        'total_dop': sum_key(prev_data, 'dop_sekolah'),
-        'total_dsp': sum_key(prev_data, 'dsp_sekolah'),
-    }
-
-    growth = {}
-    for key in ['total_siswa', 'total_pendidik', 'total_rombel', 'total_dop', 'total_dsp']:
-        if prev_kpi[key] > 0:
-            growth[key] = round(((curr_kpi[key] - prev_kpi[key]) / prev_kpi[key]) * 100, 2)
-        else:
-            growth[key] = 0.0
-
-    rasio = {
-        'siswa_pendidik': round(curr_kpi['total_siswa'] / curr_kpi['total_pendidik'], 1) if curr_kpi['total_pendidik'] > 0 else 0,
-        'siswa_rombel': round(curr_kpi['total_siswa'] / curr_kpi['total_rombel'], 1) if curr_kpi['total_rombel'] > 0 else 0,
-        'pendidik_rombel': round(curr_kpi['total_pendidik'] / curr_kpi['total_rombel'], 2) if curr_kpi['total_rombel'] > 0 else 0,
-        'dop_siswa': round(curr_kpi['total_dop'] / curr_kpi['total_siswa'], 0) if curr_kpi['total_siswa'] > 0 else 0,
-        'dsp_siswa': round(curr_kpi['total_dsp'] / curr_kpi['total_siswa'], 0) if curr_kpi['total_siswa'] > 0 else 0,
-    }
-
-    insights = []
-    if growth['total_siswa'] != 0:
-        dir_s = "meningkat" if growth['total_siswa'] > 0 else "menurun"
-        insights.append(f"Jumlah total peserta didik {dir_s} sebesar {abs(growth['total_siswa'])}% dibandingkan tahun sebelumnya.")
-    
-    if rasio['siswa_rombel'] > 0:
-        insights.append(f"Rata-rata kepadatan kelas saat ini adalah {rasio['siswa_rombel']} siswa per rombel.")
-    
-    if rasio['siswa_pendidik'] > 0:
-        insights.append(f"Rasio ideal pendidik tercatat 1 guru mendampingi rata-rata {rasio['siswa_pendidik']} peserta didik.")
-
-    if current_data:
-        max_s = max(current_data, key=lambda x: x['total_siswa'])
-        insights.append(f"Sekolah dengan jumlah peserta didik tertinggi adalah {max_s['nama_sekolah']} ({max_s['total_siswa']} siswa).")
-
-    return curr_kpi, growth, rasio, insights
-
-# ---------------- 3. HTML TEMPLATES (EMBEDDED) ---------------- #
-
-BASE_LAYOUT = '''
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Informasi Data Sekolah Angkasa</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
-    <style>
-        :root {
-            --angkasa-blue: #0F4C81;
-            --angkasa-orange: #F58220;
-            --angkasa-bg: #F8F9FA;
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        angkasa: {
+                            blue: '#0F4C81',
+                            darkBlue: '#0A3459',
+                            orange: '#F58220',
+                            orangeHover: '#d96f16',
+                            bg: '#F8FAFC'
+                        }
+                    }
+                }
+            }
         }
-        body { background-color: var(--angkasa-bg); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .sidebar { width: 280px; position: fixed; top: 0; bottom: 0; left: 0; background: var(--angkasa-blue); color: #fff; z-index: 1000; }
-        .sidebar .nav-link { color: rgba(255,255,255,0.8); margin: 4px 16px; border-radius: 8px; font-weight: 500; }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active { background: rgba(255,255,255,0.15); color: #fff; }
-        .sidebar .nav-link i { margin-right: 12px; }
-        .main-content { margin-left: 280px; padding: 24px; }
-        .card-custom { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); background: #fff; }
-        .kpi-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; font-weight: 600; }
-        .kpi-value { font-size: 1.8rem; font-weight: 700; color: #212529; }
-        .badge-growth-up { background-color: #d1e7dd; color: #0f5132; }
-        .badge-growth-down { background-color: #f8d7da; color: #842029; }
-        @media print { .sidebar, .filter-section, .btn-print-hide { display: none !important; } .main-content { margin-left: 0 !important; } }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #F8FAFC; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0A3459; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1E588A; border-radius: 3px; }
     </style>
 </head>
-<body>
+<body class="flex h-screen overflow-hidden text-slate-800">
 
-    <div class="sidebar d-flex flex-column justify-content-between py-3">
-        <div>
-            <div class="px-4 mb-4">
-                <h5 class="fw-bold text-white mb-0" style="font-size: 1.1rem;">SISTEM INFORMASI DATA SEKOLAH ANGKASA</h5>
-                <small class="text-white-50" style="font-size: 0.75rem;">Dashboard & Analytics Intelligence</small>
-            </div>
-            <ul class="nav flex-column">
-                <li class="nav-item"><a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}"><i data-feather="grid"></i> Executive Dashboard</a></li>
-                <li class="nav-item"><a href="/siswa" class="nav-link {% if active_page == 'siswa' %}active{% endif %}"><i data-feather="users"></i> Peserta Didik</a></li>
-                <li class="nav-item"><a href="/sdm" class="nav-link {% if active_page == 'sdm' %}active{% endif %}"><i data-feather="briefcase"></i> Analisis SDM</a></li>
-                <li class="nav-item"><a href="/rombel" class="nav-link {% if active_page == 'rombel' %}active{% endif %}"><i data-feather="layers"></i> Analisis Rombel</a></li>
-                <li class="nav-item"><a href="/keuangan" class="nav-link {% if active_page == 'keuangan' %}active{% endif %}"><i data-feather="dollar-sign"></i> DOP & DSP</a></li>
-                <li class="nav-item"><a href="/cabang" class="nav-link {% if active_page == 'cabang' %}active{% endif %}"><i data-feather="map-pin"></i> Cabang & Ranting</a></li>
-                <li class="nav-item"><a href="/compare" class="nav-link {% if active_page == 'compare' %}active{% endif %}"><i data-feather="columns"></i> Compare Schools</a></li>
-                <li class="nav-item"><a href="/trend" class="nav-link {% if active_page == 'trend' %}active{% endif %}"><i data-feather="trending-up"></i> Trend Analysis</a></li>
-                {% if session.get('role') == 'Admin' %}
-                <li class="nav-item"><a href="/import" class="nav-link {% if active_page == 'import' %}active{% endif %}"><i data-feather="upload-cloud"></i> Data Import</a></li>
-                {% endif %}
-                <li class="nav-item"><a href="/laporan" class="nav-link {% if active_page == 'laporan' %}active{% endif %}"><i data-feather="file-text"></i> Laporan & Export</a></li>
-            </ul>
-        </div>
-        <div class="px-4">
-            <div class="border-top border-secondary pt-3 text-white-50 small">
-                <div>Logged as: <strong class="text-white">{{ session.get('nama', 'Guest') }}</strong></div>
-                <div>Role: <span class="badge bg-warning text-dark">{{ session.get('role', 'Viewer') }}</span></div>
-                <a href="/logout" class="text-white-50 text-decoration-none d-block mt-2"><i data-feather="log-out" style="width:14px;"></i> Logout</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="main-content">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show card-custom mb-3" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="w-72 bg-angkasa-darkBlue text-white flex flex-col justify-between flex-shrink-0 shadow-xl z-20">
+        <div class="flex flex-col h-full">
+            <!-- Brand Header -->
+            <div class="p-6 border-b border-slate-700/60 bg-angkasa-blue/30">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-angkasa-orange rounded-xl text-white shadow-lg shadow-angkasa-orange/30">
+                        <i data-lucide="graduation-cap" class="w-6 h-6"></i>
                     </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+                    <div>
+                        <h1 class="font-extrabold text-sm tracking-wide text-white leading-tight uppercase">Sistem Informasi</h1>
+                        <p class="text-xs text-amber-400 font-semibold tracking-wider">DATA SEKOLAH ANGKASA</p>
+                    </div>
+                </div>
+            </div>
 
-        {{ body_content | safe }}
-    </div>
+            <!-- Nav Links -->
+            <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
+                <a href="#" onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-angkasa-orange text-white shadow-md shadow-angkasa-orange/20">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span>Executive Dashboard</span>
+                </a>
+                <a href="#" onclick="switchTab('siswa')" id="nav-siswa" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span>Peserta Didik</span>
+                </a>
+                <a href="#" onclick="switchTab('sdm')" id="nav-sdm" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
+                    <i data-lucide="briefcase" class="w-5 h-5"></i>
+                    <span>Analisis SDM</span>
+                </a>
+                <a href="#" onclick="switchTab('rombel')" id="nav-rombel" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                    <span>Analisis Rombel</span>
+                </a>
+                <a href="#" onclick="switchTab('keuangan')" id="nav-keuangan" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
+                    <i data-lucide="wallet" class="w-5 h-5"></i>
+                    <span>DOP & DSP</span>
+                </a>
+                <a href="#" onclick="switchTab('compare')" id="nav-compare" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
+                    <i data-lucide="git-compare" class="w-5 h-5"></i>
+                    <span>Compare Schools</span>
+                </a>
+                <a href="#" onclick="switchTab('trend')" id="nav-trend" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i>
+                    <span>Trend Analysis</span>
+                </a>
+            </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>feather.replace();</script>
-    {% block scripts %}{% endblock %}
+            <!-- User Status Footer -->
+            <div class="p-4 mx-4 mb-4 bg-slate-800/80 rounded-2xl border border-slate-700/50">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-full bg-angkasa-blue flex items-center justify-center font-bold text-amber-400 border border-amber-400/30">
+                        A
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white truncate">Administrator</p>
+                        <span class="inline-block px-2 py-0.5 text-[10px] font-bold bg-amber-400/20 text-amber-300 rounded-md border border-amber-400/30">Yayasan Angkasa</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
+        
+        <!-- TOP HEADER BAR -->
+        <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between z-10 shadow-sm">
+            <div>
+                <h2 id="page-title" class="text-xl font-bold text-slate-900">Executive Dashboard Analitik</h2>
+                <p id="page-subtitle" class="text-xs text-slate-500 mt-0.5">Ringkasan performa dan pemantauan data seluruh sekolah Angkasa</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="window.print()" class="flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Cetak Laporan</span>
+                </button>
+                <button onclick="alert('Fitur Export Excel Siap!')" class="flex items-center space-x-2 px-4 py-2 bg-angkasa-blue hover:bg-angkasa-darkBlue text-white rounded-xl text-xs font-semibold shadow-md shadow-angkasa-blue/20 transition">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>Export Data</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD CONTAINER -->
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+
+            <!-- FILTER BAR -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2 text-slate-700 font-bold text-xs uppercase tracking-wider">
+                        <i data-lucide="filter" class="w-4 h-4 text-angkasa-orange"></i>
+                        <span>Filter Data Analytics</span>
+                    </div>
+                    <button onclick="resetFilters()" class="text-xs font-medium text-angkasa-orange hover:underline flex items-center space-x-1">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        <span>Reset Filter</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Tahun Ajaran</label>
+                        <select id="filter-tahun" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
+                            <option value="2026/2027" selected>2026/2027</option>
+                            <option value="2025/2026">2025/2026</option>
+                            <option value="2024/2025">2024/2025</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Jenjang</label>
+                        <select id="filter-jenjang" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
+                            <option value="ALL">Semua Jenjang</option>
+                            <option value="TK">TK</option>
+                            <option value="SD">SD</option>
+                            <option value="SMP">SMP</option>
+                            <option value="SMA">SMA</option>
+                            <option value="SMK">SMK</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Kodau / Area</label>
+                        <select id="filter-area" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
+                            <option value="ALL">Semua Kodau</option>
+                            <option value="Kodau I">Kodau I</option>
+                            <option value="Kodau II">Kodau II</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Cabang</label>
+                        <select id="filter-cabang" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
+                            <option value="ALL">Semua Cabang</option>
+                            <option value="Halim">Halim Perdanakusuma</option>
+                            <option value="ATS">Atang Senjaya</option>
+                            <option value="Iswahjudi">Iswahjudi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">Status Sekolah</label>
+                        <select id="filter-status" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-angkasa-blue">
+                            <option value="ALL">Semua Status</option>
+                            <option value="Aktif">Aktif</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI CARDS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Peserta Didik</p>
+                            <h3 id="kpi-siswa" class="text-2xl font-extrabold text-slate-900 mt-1">2,959</h3>
+                        </div>
+                        <div class="p-2.5 bg-blue-50 text-angkasa-blue rounded-xl">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center space-x-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                        <span>+5.8% YoY</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pendidik (Guru)</p>
+                            <h3 id="kpi-pendidik" class="text-2xl font-extrabold text-slate-900 mt-1">178</h3>
+                        </div>
+                        <div class="p-2.5 bg-amber-50 text-angkasa-orange rounded-xl">
+                            <i data-lucide="user-check" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center space-x-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                        <span>+3.2% YoY</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rombongan Belajar</p>
+                            <h3 id="kpi-rombel" class="text-2xl font-extrabold text-slate-900 mt-1">92</h3>
+                        </div>
+                        <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                            <i data-lucide="layers" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center space-x-1.5 text-xs font-semibold text-slate-600 bg-slate-100 w-fit px-2.5 py-1 rounded-lg">
+                        <span>32 Siswa / Kelas</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total DOP & DSP</p>
+                            <h3 id="kpi-keuangan" class="text-2xl font-extrabold text-slate-900 mt-1">Rp 5.79B</h3>
+                        </div>
+                        <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                            <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center space-x-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 w-fit px-2.5 py-1 rounded-lg">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                        <span>+8.1% YoY</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AUTOMATED DATA INSIGHTS CARD -->
+            <div class="bg-gradient-to-r from-angkasa-darkBlue to-angkasa-blue text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="p-2 bg-amber-400 text-slate-900 rounded-xl font-bold">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="font-bold text-base text-white">Automated Data Insights</h3>
+                </div>
+                <ul class="space-y-2 text-xs text-slate-200 pl-2">
+                    <li class="flex items-center space-x-2">
+                        <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                        <span>Jumlah peserta didik di seluruh sekolah Angkasa mengalami pertumbuhan sebesar <strong>5.8%</strong> dibandingkan TA 2025/2026.</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                        <span>Rasio rata-rata ideal pendidik tercatat <strong>1 Guru : 16.6 Siswa</strong> (Sangat Baik).</span>
+                    </li>
+                    <li class="flex items-center space-x-2">
+                        <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                        <span>Sekolah dengan populasi terbesar adalah <strong>SMA Angkasa Halim</strong> dengan 690 peserta didik.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- CHARTS SECTION -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Bar Chart -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold text-slate-800 text-sm">Distribusi Peserta Didik Per Sekolah</h4>
+                        <span class="text-xs text-slate-400 font-medium">TA 2026/2027</span>
+                    </div>
+                    <div class="h-64">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Doughnut Chart -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-4">Proporsi Gender Siswa</h4>
+                        <div class="h-48 relative flex items-center justify-center">
+                            <canvas id="doughnutChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100 text-center">
+                        <div class="p-2 bg-blue-50/50 rounded-xl">
+                            <p class="text-[10px] font-bold text-slate-400">LAKI-LAKI</p>
+                            <p class="text-sm font-bold text-angkasa-blue mt-0.5">1,530 (51.7%)</p>
+                        </div>
+                        <div class="p-2 bg-amber-50/50 rounded-xl">
+                            <p class="text-[10px] font-bold text-slate-400">PEREMPUAN</p>
+                            <p class="text-sm font-bold text-angkasa-orange mt-0.5">1,429 (48.3%)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA TABLE -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Rincian Data Analytics Sekolah</h4>
+                        <p class="text-xs text-slate-400 mt-0.5">Data terintegrasi seluruh jenjang dan ranting</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
+                                <th class="py-3.5 px-6">NPSN</th>
+                                <th class="py-3.5 px-6">Nama Sekolah</th>
+                                <th class="py-3.5 px-6">Jenjang</th>
+                                <th class="py-3.5 px-6">Cabang</th>
+                                <th class="py-3.5 px-6 text-center">Siswa</th>
+                                <th class="py-3.5 px-6 text-center">Guru</th>
+                                <th class="py-3.5 px-6 text-center">Rombel</th>
+                                <th class="py-3.5 px-6 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
+                            <!-- JS Generated Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JS LOGIC ENGINE -->
+    <script>
+        // Init Icons
+        lucide.createIcons();
+
+        // Dummy Master Data
+        const masterData = [
+            { npsn: "10100001", nama: "TK Angkasa 01 Halim", jenjang: "TK", cabang: "Halim", area: "Kodau I", siswa: 142, guru: 12, rombel: 6, lk: 70, pr: 72 },
+            { npsn: "10100002", nama: "SD Angkasa 03 Halim", jenjang: "SD", cabang: "Halim", area: "Kodau I", siswa: 502, guru: 28, rombel: 16, lk: 255, pr: 247 },
+            { npsn: "10100003", nama: "SMP Angkasa Halim", jenjang: "SMP", cabang: "Halim", area: "Kodau I", siswa: 640, guru: 38, rombel: 19, lk: 320, pr: 320 },
+            { npsn: "10100004", nama: "SMA Angkasa Halim", jenjang: "SMA", cabang: "Halim", area: "Kodau I", siswa: 690, guru: 45, rombel: 21, lk: 340, pr: 350 },
+            { npsn: "10200001", nama: "SD Angkasa ATS", jenjang: "SD", cabang: "ATS", area: "Kodau I", siswa: 425, guru: 25, rombel: 13, lk: 215, pr: 210 },
+            { npsn: "10300001", nama: "SMK Angkasa Iswahjudi", jenjang: "SMK", cabang: "Iswahjudi", area: "Kodau II", siswa: 560, guru: 35, rombel: 17, lk: 330, pr: 230 }
+        ];
+
+        let barChartInstance = null;
+        let doughnutChartInstance = null;
+
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-3.5 px-6 font-mono text-slate-500">${item.npsn}</td>
+                        <td class="py-3.5 px-6 font-bold text-slate-900">${item.nama}</td>
+                        <td class="py-3.5 px-6"><span class="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg text-[10px]">${item.jenjang}</span></td>
+                        <td class="py-3.5 px-6">${item.cabang}</td>
+                        <td class="py-3.5 px-6 text-center font-bold text-angkasa-blue">${item.siswa}</td>
+                        <td class="py-3.5 px-6 text-center">${item.guru}</td>
+                        <td class="py-3.5 px-6 text-center">${item.rombel}</td>
+                        <td class="py-3.5 px-6 text-center">
+                            <button onclick="alert('Detail sekolah ${item.nama}')" class="px-3 py-1 bg-blue-50 text-angkasa-blue font-semibold hover:bg-angkasa-blue hover:text-white rounded-lg transition text-[11px]">Detail</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderCharts(data) {
+            const labels = data.map(d => d.nama);
+            const siswaData = data.map(d => d.siswa);
+
+            // Bar Chart
+            if (barChartInstance) barChartInstance.destroy();
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            barChartInstance = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Peserta Didik',
+                        data: siswaData,
+                        backgroundColor: '#0F4C81',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Doughnut Chart
+            const totalLk = data.reduce((acc, d) => acc + d.lk, 0);
+            const totalPr = data.reduce((acc, d) => acc + d.pr, 0);
+
+            if (doughnutChartInstance) doughnutChartInstance.destroy();
+            const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
+            doughnutChartInstance = new Chart(ctxDoughnut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Laki-laki', 'Perempuan'],
+                    datasets: [{
+                        data: [totalLk, totalPr],
+                        backgroundColor: ['#0F4C81', '#F58220'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function applyFilters() {
+            const jenjang = document.getElementById('filter-jenjang').value;
+            const area = document.getElementById('filter-area').value;
+            const cabang = document.getElementById('filter-cabang').value;
+
+            let filtered = masterData.filter(d => {
+                return (jenjang === 'ALL' || d.jenjang === jenjang) &&
+                       (area === 'ALL' || d.area === area) &&
+                       (cabang === 'ALL' || d.cabang === cabang);
+            });
+
+            // Update KPI
+            const totalSiswa = filtered.reduce((acc, d) => acc + d.siswa, 0);
+            const totalGuru = filtered.reduce((acc, d) => acc + d.guru, 0);
+            const totalRombel = filtered.reduce((acc, d) => acc + d.rombel, 0);
+
+            document.getElementById('kpi-siswa').innerText = totalSiswa.toLocaleString();
+            document.getElementById('kpi-pendidik').innerText = totalGuru.toLocaleString();
+            document.getElementById('kpi-rombel').innerText = totalRombel.toLocaleString();
+
+            renderTable(filtered);
+            renderCharts(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-jenjang').value = 'ALL';
+            document.getElementById('filter-area').value = 'ALL';
+            document.getElementById('filter-cabang').value = 'ALL';
+            applyFilters();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-angkasa-orange', 'text-white', 'shadow-md');
+                el.classList.add('text-slate-300');
+            });
+            const activeNav = document.getElementById(`nav-${tabName}`);
+            if(activeNav) {
+                activeNav.classList.add('bg-angkasa-orange', 'text-white', 'shadow-md');
+                activeNav.classList.remove('text-slate-300');
+            }
+        }
+
+        // Initial Load
+        applyFilters();
+    </script>
 </body>
 </html>
-'''
-
-DASHBOARD_BODY = '''
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4 class="fw-bold mb-1">Executive Dashboard Analitik</h4>
-        <p class="text-muted small mb-0">Overview performa Sistem Informasi Data Sekolah Angkasa secara real-time</p>
-    </div>
-</div>
-
-<div class="card card-custom p-3 mb-4 filter-section">
-    <form method="GET" action="/" class="row g-2 align-items-center">
-        <div class="col-md-2">
-            <label class="form-label small fw-bold mb-1">Tahun Ajaran</label>
-            <select name="tahun_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                {% for t in filter_opts['tahun'] %}
-                <option value="{{ t['id'] }}" {% if filters['tahun_id']|int == t['id'] or (not filters['tahun_id'] and t['id']==active_tahun_id) %}selected{% endif %}>{{ t['kode'] }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label small fw-bold mb-1">Jenjang</label>
-            <select name="jenjang_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">-- Semua Jenjang --</option>
-                {% for j in filter_opts['jenjang'] %}
-                <option value="{{ j['id'] }}" {% if filters['jenjang_id']|int == j['id'] %}selected{% endif %}>{{ j['nama'] }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label small fw-bold mb-1">Kodau / Area</label>
-            <select name="wilayah_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">-- Semua Kodau --</option>
-                {% for w in filter_opts['wilayah'] %}
-                <option value="{{ w['id'] }}" {% if filters['wilayah_id']|int == w['id'] %}selected{% endif %}>{{ w['nama'] }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label small fw-bold mb-1">Cabang</label>
-            <select name="cabang_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">-- Semua Cabang --</option>
-                {% for c in filter_opts['cabang'] %}
-                <option value="{{ c['id'] }}" {% if filters['cabang_id']|int == c['id'] %}selected{% endif %}>{{ c['nama'] }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label small fw-bold mb-1">Sekolah</label>
-            <select name="sekolah_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">-- Semua Sekolah --</option>
-                {% for s in filter_opts['sekolah'] %}
-                <option value="{{ s['id'] }}" {% if filters['sekolah_id']|int == s['id'] %}selected{% endif %}>{{ s['nama_sekolah'] }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <a href="/" class="btn btn-sm btn-light w-100 border"><i data-feather="rotate-ccw" style="width:14px;"></i> Reset Filter</a>
-        </div>
-    </form>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card card-custom p-3">
-            <div class="kpi-title">Total Sekolah</div>
-            <div class="kpi-value">{{ kpi['total_sekolah'] }}</div>
-            <div class="small text-muted mt-1">Terdaftar dalam kriteria</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-custom p-3">
-            <div class="kpi-title">Total Peserta Didik</div>
-            <div class="kpi-value">{{ "{:,}".format(kpi['total_siswa']) }}</div>
-            <div class="mt-1">
-                <span class="badge {% if growth['total_siswa'] >= 0 %}badge-growth-up{% else %}badge-growth-down{% endif %} small">
-                    {% if growth['total_siswa'] >= 0 %}↑{% else %}↓{% endif %} {{ growth['total_siswa'] }}% YoY
-                </span>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-custom p-3">
-            <div class="kpi-title">Total Pendidik</div>
-            <div class="kpi-value">{{ "{:,}".format(kpi['total_pendidik']) }}</div>
-            <div class="mt-1">
-                <span class="badge {% if growth['total_pendidik'] >= 0 %}badge-growth-up{% else %}badge-growth-down{% endif %} small">
-                    {% if growth['total_pendidik'] >= 0 %}↑{% else %}↓{% endif %} {{ growth['total_pendidik'] }}% YoY
-                </span>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-custom p-3">
-            <div class="kpi-title">Total Rombel</div>
-            <div class="kpi-value">{{ kpi['total_rombel'] }}</div>
-            <div class="mt-1">
-                <span class="badge {% if growth['total_rombel'] >= 0 %}badge-growth-up{% else %}badge-growth-down{% endif %} small">
-                    {% if growth['total_rombel'] >= 0 %}↑{% else %}↓{% endif %} {{ growth['total_rombel'] }}% YoY
-                </span>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card card-custom p-3 mb-4 bg-white border-start border-4 border-warning">
-    <h6 class="fw-bold text-dark mb-2"><i data-feather="cpu" class="text-warning me-2"></i>Automated Data Insights</h6>
-    <ul class="mb-0 text-secondary small ps-3">
-        {% for ins in insights %}
-        <li class="mb-1">{{ ins }}</li>
-        {% else %}
-        <li>Tidak ada data yang cukup untuk memuat insight.</li>
-        {% endfor %}
-    </ul>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-8">
-        <div class="card card-custom p-3">
-            <h6 class="fw-bold mb-3">Distribusi Peserta Didik Per Sekolah</h6>
-            <canvas id="chartSiswaSekolah" height="120"></canvas>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card card-custom p-3">
-            <h6 class="fw-bold mb-3">Proporsi Gender Siswa</h6>
-            <canvas id="chartGender" height="250"></canvas>
-        </div>
-    </div>
-</div>
-
-<div class="card card-custom p-3">
-    <h6 class="fw-bold mb-3">Ringkasan Data Sekolah</h6>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 small">
-            <thead class="table-light">
-                <tr>
-                    <th>NPSN</th>
-                    <th>Nama Sekolah</th>
-                    <th>Jenjang</th>
-                    <th>Cabang</th>
-                    <th class="text-center">Siswa</th>
-                    <th class="text-center">Pendidik</th>
-                    <th class="text-center">Rombel</th>
-                    <th class="text-end">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in current_data %}
-                <tr>
-                    <td><code>{{ row['npsn'] }}</code></td>
-                    <td class="fw-bold">{{ row['nama_sekolah'] }}</td>
-                    <td><span class="badge bg-secondary">{{ row['jenjang_nama'] }}</span></td>
-                    <td>{{ row['cabang_nama'] }}</td>
-                    <td class="text-center fw-bold">{{ row['total_siswa'] }}</td>
-                    <td class="text-center">{{ row['pendidik'] }}</td>
-                    <td class="text-center">{{ row['rombel'] }}</td>
-                    <td class="text-end">
-                        <a href="/sekolah/{{ row['sekolah_id'] }}" class="btn btn-sm btn-outline-primary"><i data-feather="eye" style="width:12px;"></i> Detail</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const ctxBar = document.getElementById('chartSiswaSekolah').getContext('2d');
-        new Chart(ctxBar, {
-            type: 'bar',
-            data: {
-                labels: [{% for r in current_data %}"{{ r['nama_sekolah'] }}",{% endfor %}],
-                datasets: [{
-                    label: 'Jumlah Siswa',
-                    data: [{% for r in current_data %}{{ r['total_siswa'] }},{% endfor %}],
-                    backgroundColor: '#0F4C81',
-                    borderRadius: 6
-                }]
-            },
-            options: { responsive: true, plugins: { legend: { display: false } } }
-        });
-
-        const ctxDoughnut = document.getElementById('chartGender').getContext('2d');
-        new Chart(ctxDoughnut, {
-            type: 'doughnut',
-            data: {
-                labels: ['Laki-laki', 'Perempuan'],
-                datasets: [{
-                    data: [{{ kpi['total_lk'] }}, {{ kpi['total_pr'] }}],
-                    backgroundColor: ['#0F4C81', '#F58220']
-                }]
-            },
-            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-        });
-    });
-</script>
-'''
-
-LOGIN_BODY = '''
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <title>Login - Sistem Informasi Data Sekolah Angkasa</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="height: 100vh;">
-    <div class="card border-0 shadow-sm p-4" style="width: 380px; border-radius: 12px;">
-        <div class="text-center mb-4">
-            <h5 class="fw-bold text-primary mb-0">SISTEM INFORMASI DATA SEKOLAH ANGKASA</h5>
-            <small class="text-muted">Data Intelligence Platform</small>
-        </div>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} p-2 small" role="alert">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        <form method="POST" action="/login">
-            <div class="mb-3">
-                <label class="form-label small fw-bold">Username</label>
-                <input type="text" name="username" class="form-control" required placeholder="admin / viewer">
-            </div>
-            <div class="mb-3">
-                <label class="form-label small fw-bold">Password</label>
-                <input type="password" name="password" class="form-control" required placeholder="••••••••">
-            </div>
-            <button type="submit" class="btn btn-primary w-100 fw-bold">Masuk Platform</button>
-        </form>
-        <div class="mt-3 text-center text-muted small">
-            <div>Default Admin: <code>admin</code> / <code>admin123</code></div>
-            <div>Default Viewer: <code>viewer</code> / <code>viewer123</code></div>
-        </div>
-    </div>
-</body>
-</html>
-'''
-
-# ---------------- 4. CONTROLLERS & ROUTES ---------------- #
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        conn = get_db_connection()
-        user = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password)).fetchone()
-        conn.close()
-        if user:
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['role'] = user['role']
-            session['nama'] = user['nama']
-            return redirect(url_for('dashboard'))
-        flash('Username atau password salah.', 'danger')
-    return render_template_string(LOGIN_BODY)
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-@app.route('/')
-@login_required
-def dashboard():
-    filter_opts = get_filter_options()
-    filters = {k: request.args.get(k) for k in ['tahun_id', 'jenjang_id', 'wilayah_id', 'cabang_id', 'ranting_id', 'sekolah_id']}
-    curr_data, prev_data, active_tahun_id = get_filtered_data(filters)
-    kpi, growth, rasio, insights = calculate_kpi_and_insights(curr_data, prev_data)
-
-    rendered_body = render_template_string(DASHBOARD_BODY, 
-                                           filter_opts=filter_opts, filters=filters, active_tahun_id=active_tahun_id,
-                                           kpi=kpi, growth=growth, rasio=rasio, insights=insights, current_data=curr_data)
-
-    return render_template_string(BASE_LAYOUT, active_page='dashboard', body_content=rendered_body)
-
-@app.route('/siswa')
-@login_required
-def siswa():
-    filter_opts = get_filter_options()
-    filters = {k: request.args.get(k) for k in ['tahun_id', 'jenjang_id', 'wilayah_id', 'cabang_id', 'ranting_id', 'sekolah_id']}
-    curr_data, prev_data, active_tahun_id = get_filtered_data(filters)
-    kpi, growth, rasio, insights = calculate_kpi_and_insights(curr_data, prev_data)
-    
-    body = f'''
-    <h4 class="fw-bold mb-3">Analisis Peserta Didik</h4>
-    <div class="row g-3 mb-4">
-        <div class="col-md-6"><div class="card card-custom p-3"><div class="kpi-title">Siswa Laki-Laki</div><div class="kpi-value">{kpi['total_lk']}</div></div></div>
-        <div class="col-md-6"><div class="card card-custom p-3"><div class="kpi-title">Siswa Perempuan</div><div class="kpi-value">{kpi['total_pr']}</div></div></div>
-    </div>
-    '''
-    return render_template_string(BASE_LAYOUT, active_page='siswa', body_content=body)
-
-@app.route('/sdm')
-@login_required
-def sdm():
-    filter_opts = get_filter_options()
-    filters = {k: request.args.get(k) for k in ['tahun_id', 'jenjang_id', 'wilayah_id', 'cabang_id', 'ranting_id', 'sekolah_id']}
-    curr_data, prev_data, active_tahun_id = get_filtered_data(filters)
-    kpi, growth, rasio, insights = calculate_kpi_and_insights(curr_data, prev_data)
-    
-    body = f'''
-    <h4 class="fw-bold mb-3">Analisis SDM & Rasio Ideal</h4>
-    <div class="row g-3 mb-4">
-        <div class="col-md-4"><div class="card card-custom p-3"><div class="kpi-title">Rasio Siswa : Pendidik</div><div class="kpi-value">{rasio['siswa_pendidik']}</div></div></div>
-        <div class="col-md-4"><div class="card card-custom p-3"><div class="kpi-title">Rasio Siswa : Rombel</div><div class="kpi-value">{rasio['siswa_rombel']}</div></div></div>
-        <div class="col-md-4"><div class="card card-custom p-3"><div class="kpi-title">Rasio Pendidik : Rombel</div><div class="kpi-value">{rasio['pendidik_rombel']}</div></div></div>
-    </div>
-    '''
-    return render_template_string(BASE_LAYOUT, active_page='sdm', body_content=body)
-
-@app.route('/rombel')
-@login_required
-def rombel():
-    body = '<h4 class="fw-bold mb-3">Analisis Rombongan Belajar (Rombel)</h4><p class="text-muted">Visualisasi Rombel per sekolah dan per jenjang.</p>'
-    return render_template_string(BASE_LAYOUT, active_page='rombel', body_content=body)
-
-@app.route('/keuangan')
-@login_required
-def keuangan():
-    body = '<h4 class="fw-bold mb-3">Analisis DOP & DSP Keuangan Sekolah</h4><p class="text-muted">Sistem informasi keuangan dalam format Rupiah Indonesia.</p>'
-    return render_template_string(BASE_LAYOUT, active_page='keuangan', body_content=body)
-
-@app.route('/cabang')
-@login_required
-def cabang():
-    body = '<h4 class="fw-bold mb-3">Agregasi Cabang & Ranting</h4><p class="text-muted">Drill-down data dari tingkat Cabang hingga Sekolah.</p>'
-    return render_template_string(BASE_LAYOUT, active_page='cabang', body_content=body)
-
-@app.route('/compare')
-@login_required
-def compare():
-    body = '<h4 class="fw-bold mb-3">Compare Schools</h4><p class="text-muted">Pilih 2 hingga 5 sekolah untuk membandingkan performa antar indikator.</p>'
-    return render_template_string(BASE_LAYOUT, active_page='compare', body_content=body)
-
-@app.route('/trend')
-@login_required
-def trend():
-    body = '<h4 class="fw-bold mb-3">Multi-Year Trend Analysis</h4><p class="text-muted">Analisis tren historis sekolah secara linier.</p>'
-    return render_template_string(BASE_LAYOUT, active_page='trend', body_content=body)
-
-@app.route('/import')
-@login_required
-def import_data():
-    if session.get('role') != 'Admin':
-        flash('Akses ditolak. Halaman ini hanya untuk role Admin.', 'danger')
-        return redirect(url_for('dashboard'))
-    body = '<h4 class="fw-bold mb-3">Import Data Engine</h4><p class="text-muted">Upload file CSV/Excel dan validasi data sebelum disimpan ke database.</p>'
-    return render_template_string(BASE_LAYOUT, active_page='import', body_content=body)
-
-@app.route('/laporan')
-@login_required
-def laporan():
-    body = '<h4 class="fw-bold mb-3">Laporan & Fitur Export</h4><button class="btn btn-primary" onclick="window.print()">Print / Save PDF Dashboard</button>'
-    return render_template_string(BASE_LAYOUT, active_page='laporan', body_content=body)
-
-@app.route('/sekolah/<int:id>')
-@login_required
-def detail_sekolah(id):
-    conn = get_db_connection()
-    sekolah = conn.execute('SELECT * FROM sekolah WHERE id = ?', (id,)).fetchone()
-    conn.close()
-    body = f'<h4 class="fw-bold mb-3">Profil Detail: {sekolah["nama_sekolah"] if sekolah else "Sekolah"}</h4>'
-    return render_template_string(BASE_LAYOUT, active_page='dashboard', body_content=body)
-
-# ---------------- 5. MAIN APPLICATION EXECUTION ---------------- #
-
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True, port=5000)
