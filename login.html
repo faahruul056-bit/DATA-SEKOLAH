@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistem Informasi Data Sekolah Angkasa</title>
+    <title>Akses - Sistem Informasi Data Sekolah Angkasa</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -31,12 +31,11 @@
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden my-6">
         
-        <!-- Header Card -->
+        <!-- HEADER BRANDING -->
         <div class="bg-gradient-to-r from-angkasa-darkBlue to-angkasa-blue p-8 text-white text-center relative overflow-hidden">
             <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full blur-xl"></div>
-            
             <div class="inline-flex p-3 bg-angkasa-orange rounded-2xl text-white shadow-lg shadow-angkasa-orange/30 mb-3">
                 <i data-lucide="graduation-cap" class="w-8 h-8"></i>
             </div>
@@ -45,21 +44,32 @@
             <p class="text-[11px] text-slate-300 mt-2">Portal Akses Pengelolaan & Analitik Data Sekolah</p>
         </div>
 
-        <!-- Form Login -->
+        <!-- TOGGLE LOGIN / REGISTER -->
+        <div class="flex border-b border-slate-100 bg-slate-50/50 p-1.5">
+            <button id="tab-login-btn" onclick="switchForm('login')" class="flex-1 py-2.5 text-xs font-bold text-angkasa-blue bg-white rounded-2xl shadow-sm transition-all duration-200">
+                Masuk System
+            </button>
+            <button id="tab-register-btn" onclick="switchForm('register')" class="flex-1 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-all duration-200">
+                Daftar Akun Baru
+            </button>
+        </div>
+
         <div class="p-8">
-            <div id="error-alert" class="hidden mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold flex items-center space-x-2">
-                <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
-                <span id="error-text">Username atau password salah!</span>
+            <!-- ALERT BOX -->
+            <div id="alert-box" class="hidden mb-4 p-3 rounded-xl text-xs font-semibold flex items-center space-x-2">
+                <i id="alert-icon" data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+                <span id="alert-text">Pesan pemberitahuan</span>
             </div>
 
-            <form onsubmit="handleLogin(event)" class="space-y-4">
+            <!-- FORM LOGIN -->
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Username / NPSN</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                             <i data-lucide="user" class="w-4 h-4"></i>
                         </span>
-                        <input type="text" id="username" required placeholder="Masukkan NPSN / Username" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue focus:bg-white transition">
+                        <input type="text" id="login-username" required placeholder="Masukkan Username / NPSN" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue focus:bg-white transition">
                     </div>
                 </div>
 
@@ -69,25 +79,53 @@
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                             <i data-lucide="lock" class="w-4 h-4"></i>
                         </span>
-                        <input type="password" id="password" required placeholder="••••••••" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue focus:bg-white transition">
+                        <input type="password" id="login-password" required placeholder="••••••••" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue focus:bg-white transition">
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between text-xs pt-1">
-                    <label class="flex items-center space-x-2 text-slate-600 cursor-pointer">
-                        <input type="checkbox" class="rounded border-slate-300 text-angkasa-blue focus:ring-0">
-                        <span>Ingat saya</span>
-                    </label>
-                    <a href="#" onclick="alert('Silakan hubungi Pengurus Yayasan Angkasa untuk reset password.')" class="font-semibold text-angkasa-orange hover:underline">Lupa Password?</a>
-                </div>
-
-                <button type="submit" class="w-full py-3 bg-angkasa-orange hover:bg-angkasa-orangeHover text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-angkasa-orange/20 transition duration-200 flex items-center justify-center space-x-2">
+                <button type="submit" id="btn-login-submit" class="w-full py-3 bg-angkasa-orange hover:bg-angkasa-orangeHover text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-angkasa-orange/20 transition duration-200 flex items-center justify-center space-x-2">
                     <span>Masuk ke Dashboard</span>
                     <i data-lucide="arrow-right" class="w-4 h-4"></i>
                 </button>
             </form>
 
-            <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+            <!-- FORM REGISTER -->
+            <form id="form-register" onsubmit="handleRegister(event)" class="space-y-3.5 hidden">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tipe Akses User</label>
+                    <select id="reg-role" onchange="toggleSchoolField()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue">
+                        <option value="SEKOLAH" selected>Operator Sekolah (Input Data)</option>
+                        <option value="YAYASAN">Pengurus Yayasan (View Executive Analytics)</option>
+                    </select>
+                </div>
+
+                <div id="school-select-wrapper">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Sekolah</label>
+                    <input type="text" id="reg-school" placeholder="Contoh: SMA Angkasa Halim" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap / Petugas</label>
+                    <input type="text" id="reg-name" required placeholder="Contoh: Budi Santoso" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Username / NPSN Baru</label>
+                    <input type="text" id="reg-username" required placeholder="Buat Username / NPSN" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" id="reg-password" required placeholder="Buat Password" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-angkasa-blue">
+                </div>
+
+                <button type="submit" id="btn-register-submit" class="w-full py-3 bg-angkasa-blue hover:bg-angkasa-darkBlue text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-angkasa-blue/20 transition duration-200 flex items-center justify-center space-x-2">
+                    <span>Daftarkan Akun</span>
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                </button>
+            </form>
+
+            <div class="mt-6 pt-5 border-t border-slate-100 text-center">
                 <p class="text-[11px] text-slate-400 font-medium">Pengelola Data Sekolah Yayasan Angkasa</p>
             </div>
         </div>
@@ -97,21 +135,120 @@
     <script>
         lucide.createIcons();
 
-        function handleLogin(event) {
-            event.preventDefault();
-            const user = document.getElementById('username').value.trim();
-            const pass = document.getElementById('password').value.trim();
-            const errorAlert = document.getElementById('error-alert');
+        // API Endpoint Google Apps Script Anda
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw5CmgiR3d5poaHOpQqM5qijtKjqOxdMjTIA8ANadu5s5hMNznO4x9XKX3MsjzQKD5eSQ/exec';
 
-            // Simulasi Login Akses (Bisa Dikembangkan)
-            if (user === 'admin' && pass === 'admin123') {
-                localStorage.setItem('angkasa_user', JSON.stringify({ name: 'Administrator', role: 'Yayasan Angkasa', npsn: 'ALL' }));
-                window.location.href = 'index.html';
-            } else if (user === '10100004' && pass === '10100004') {
-                localStorage.setItem('angkasa_user', JSON.stringify({ name: 'SMA Angkasa Halim', role: 'Operator Sekolah', npsn: '10100004' }));
-                window.location.href = 'index.html';
+        function switchForm(type) {
+            const formLogin = document.getElementById('form-login');
+            const formRegister = document.getElementById('form-register');
+            const btnLogin = document.getElementById('tab-login-btn');
+            const btnRegister = document.getElementById('tab-register-btn');
+            document.getElementById('alert-box').classList.add('hidden');
+
+            if (type === 'login') {
+                formLogin.classList.remove('hidden');
+                formRegister.classList.add('hidden');
+                btnLogin.className = "flex-1 py-2.5 text-xs font-bold text-angkasa-blue bg-white rounded-2xl shadow-sm transition-all duration-200";
+                btnRegister.className = "flex-1 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-all duration-200";
             } else {
-                errorAlert.classList.remove('hidden');
+                formLogin.classList.add('hidden');
+                formRegister.classList.remove('hidden');
+                btnRegister.className = "flex-1 py-2.5 text-xs font-bold text-angkasa-blue bg-white rounded-2xl shadow-sm transition-all duration-200";
+                btnLogin.className = "flex-1 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-all duration-200";
+            }
+        }
+
+        function toggleSchoolField() {
+            const role = document.getElementById('reg-role').value;
+            const schoolWrapper = document.getElementById('school-select-wrapper');
+            if (role === 'YAYASAN') {
+                schoolWrapper.classList.add('hidden');
+            } else {
+                schoolWrapper.classList.remove('hidden');
+            }
+        }
+
+        function showAlert(msg, isSuccess = false) {
+            const alertBox = document.getElementById('alert-box');
+            const alertText = document.getElementById('alert-text');
+            alertText.innerText = msg;
+            alertBox.classList.remove('hidden');
+            alertBox.className = isSuccess 
+                ? "mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold flex items-center space-x-2"
+                : "mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold flex items-center space-x-2";
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-register-submit');
+            btn.disabled = true;
+            btn.innerText = "Proses Mendaftar...";
+
+            const role = document.getElementById('reg-role').value;
+            const school = role === 'SEKOLAH' ? document.getElementById('reg-school').value : 'Pengurus Yayasan';
+            const name = document.getElementById('reg-name').value.trim();
+            const username = document.getElementById('reg-username').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'register', username, password, role, name, school })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    showAlert("Pendaftaran Berhasil di Google Sheets! Silakan login.", true);
+                    setTimeout(() => switchForm('login'), 1500);
+                } else {
+                    showAlert("Pendaftaran gagal, coba lagi.");
+                }
+            } catch (err) {
+                showAlert("Terjadi kesalahan koneksi ke Google Sheets.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<span>Daftarkan Akun</span><i data-lucide="user-plus" class="w-4 h-4"></i>`;
+                lucide.createIcons();
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-login-submit');
+            btn.disabled = true;
+            btn.innerText = "Memeriksa Akun...";
+
+            const user = document.getElementById('login-username').value.trim();
+            const pass = document.getElementById('login-password').value.trim();
+
+            // Default Admin Fallback
+            if (user === 'admin' && pass === 'admin123') {
+                localStorage.setItem('angkasa_user', JSON.stringify({ name: 'Pengurus Pusat', role: 'YAYASAN', school: 'Seluruh Sekolah' }));
+                window.location.href = 'index.html';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUsers`);
+                const users = await response.json();
+                
+                const foundUser = users.find(u => u[0].toString() === user && u[1].toString() === pass);
+
+                if (foundUser) {
+                    localStorage.setItem('angkasa_user', JSON.stringify({ 
+                        name: foundUser[3], 
+                        role: foundUser[2], 
+                        school: foundUser[4] 
+                    }));
+                    window.location.href = 'index.html';
+                } else {
+                    showAlert("Username atau password tidak ditemukan!");
+                }
+            } catch (err) {
+                showAlert("Gagal terhubung ke Database Google Sheets.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<span>Masuk ke Dashboard</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+                lucide.createIcons();
             }
         }
     </script>
