@@ -104,18 +104,18 @@
     </main>
   </div>
 
-  <!-- MODAL DETAIL DATA DOKUMEN/INPUT -->
+  <!-- MODAL DETAIL PEMERIKSAAN ITEM -->
   <div id="detailModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 space-y-4 border border-slate-200">
       <div class="flex justify-between items-center border-b pb-3">
-        <h3 id="modalTitle" class="font-bold text-slate-800 text-base">Detail Ringkasan Input Data Sekolah</h3>
+        <h3 id="modalTitle" class="font-bold text-slate-800 text-base">Detail Rincian Isian Data</h3>
         <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <div id="modalBody" class="text-xs space-y-3 max-h-96 overflow-y-auto">
-        <!-- Content dynamically injected -->
+        <!-- Injected Dynamically -->
       </div>
       <div class="text-right border-t pt-3">
-        <button onclick="closeDetailModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 py-2 rounded-lg text-xs">Tutup</button>
+        <button onclick="closeDetailModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 py-2 rounded-lg text-xs">Tutup Window</button>
       </div>
     </div>
   </div>
@@ -202,16 +202,16 @@
       "2024/2025": []
     };
 
-    let currentRoleSelection = localStorage.getItem('sidsa_role_v5') || 'ADMIN';
+    let currentRoleSelection = localStorage.getItem('sidsa_role_v6') || 'ADMIN';
     let activeTab = 'dashboard';
-    let db = JSON.parse(localStorage.getItem('sidsa_db_v5')) || initialData;
+    let db = JSON.parse(localStorage.getItem('sidsa_db_v6')) || initialData;
 
     function saveDB() {
-      localStorage.setItem('sidsa_db_v5', JSON.stringify(db));
+      localStorage.setItem('sidsa_db_v6', JSON.stringify(db));
     }
 
     function resetDataDemo() {
-      localStorage.removeItem('sidsa_db_v5');
+      localStorage.removeItem('sidsa_db_v6');
       db = initialData;
       saveDB();
       alert("Data berhasil di-reset ke kondisi awal.");
@@ -235,7 +235,7 @@
 
     function switchRole(val) {
       currentRoleSelection = val;
-      localStorage.setItem('sidsa_role_v5', val);
+      localStorage.setItem('sidsa_role_v6', val);
       renderSidebar();
       renderFilterControls();
       applyFilters();
@@ -1066,7 +1066,7 @@
       `;
     }
 
-    // MODUL VALIDASI YAYASAN (DENGAN DETAIL RINCIAN DATA PER KATEGORI & MODAL)
+    // MODUL VALIDASI DATA (VERSI TERPERINCI PER DOKUMEN & MODUL)
     function renderValidasiModule(list) {
       const docsConfig = [
         { key: 'rkas', label: 'RKAS' },
@@ -1082,7 +1082,7 @@
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
           <div class="border-b pb-3">
             <h3 class="font-bold text-slate-800 text-base">Persetujuan & Validasi Data Sekolah oleh Yayasan</h3>
-            <p class="text-xs text-slate-500">Rincian status pengisian data per kategori dan kelengkapan dokumen wajib dari tiap sekolah.</p>
+            <p class="text-xs text-slate-500">Pilih item atau modul spesifik di bawah ini yang membutuhkan persetujuan/validasi dari Admin Yayasan.</p>
           </div>
 
           <div class="space-y-6">
@@ -1098,14 +1098,14 @@
                   <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
                     <div>
                       <h4 class="font-bold text-brand-blue text-sm">${s.nama}</h4>
-                      <p class="text-xs text-slate-500">NPSN: ${s.npsn} \vert{} Update Terakhir:${s.lastUpdate}</p>
+                      <p class="text-xs text-slate-500">NPSN: ${s.npsn} | Update Terakhir: ${s.lastUpdate} \vert{} Status Keseluruhan:${renderStatusBadge(s.statusValidation)}</p>
                     </div>
                     <div class="flex items-center gap-2">
                       <button onclick="showDetailModal('${s.npsn}')" class="bg-blue-100 hover:bg-blue-200 text-brand-blue border border-blue-300 text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1">
-                        <i data-lucide="eye" class="w-3.5 h-3.5"></i> Lihat Detail Input
+                        <i data-lucide="eye" class="w-3.5 h-3.5"></i> Periksa Semua Isian Data
                       </button>
                       <button onclick="updateValidationStatus('${s.npsn}', 'Sudah Valid')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
-                        Setujui (Valid)
+                        Setujui Semua (Valid)
                       </button>
                       <button onclick="updateValidationStatus('${s.npsn}', 'Perlu Perbaikan')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
                         Minta Perbaikan
@@ -1113,51 +1113,57 @@
                     </div>
                   </div>
 
-                  <!-- RINCIAN VALIDASI MODUL UTAMA -->
-                  <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-                    <div class="bg-white p-3 rounded-lg border space-y-1">
-                      <span class="text-slate-400 font-semibold block">1. Identitas & Kepsek</span>
-                      <strong class="block text-slate-700">${s.kepalaSekolah}</strong>
-                      <span class="text-[11px] text-slate-500">Akreditasi: ${getAkreditasiText(s.akreditasi)}</span>
-                    </div>
-
-                    <div class="bg-white p-3 rounded-lg border space-y-1">
-                      <span class="text-slate-400 font-semibold block">2. Peserta Didik & Rombel</span>
-                      <strong class="block text-slate-700">${totalSiswa} Siswa</strong>
-                      <span class="text-[11px] text-slate-500">Total Rombel: ${s.siswa.r7 + s.siswa.r8 + s.siswa.r9} Kelas</span>
-                    </div>
-
-                    <div class="bg-white p-3 rounded-lg border space-y-1">
-                      <span class="text-slate-400 font-semibold block">3. SDM (Guru & Tendik)</span>
-                      <strong class="block text-slate-700">${totalGuru} Guru \vert{}${s.tendik.L + s.tendik.P} Tendik</strong>
-                      <span class="text-[11px] text-slate-500">GTY: ${s.pendidik.gty \vert{}\vert{} 0} \vert{} DPK PNS:${s.pendidik.dpkPns || 0}</span>
-                    </div>
-
-                    <div class="bg-white p-3 rounded-lg border space-y-1">
-                      <span class="text-slate-400 font-semibold block">4. Tarif DOP & DSP</span>
-                      <strong class="block text-slate-700">DOP VII: ${formatRupiah(s.keuangan.dop7)}</strong>
-                      <span class="text-[11px] text-slate-500">DSP VII: ${formatRupiah(s.keuangan.dsp7)}</span>
-                    </div>
-                  </div>
-
-                  <!-- RINCIAN DOKUMEN LAPORAN -->
+                  <!-- ITEM VALIDASI 1: DOKUMEN LAPORAN WAJIB -->
                   <div class="bg-white p-3 rounded-lg border space-y-2">
-                    <span class="font-bold text-slate-700 text-xs block">5. Kelengkapan Berkas Dokumen Wajib:</span>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                    <span class="font-bold text-slate-700 text-xs block">1. Validasi Berkas / Dokumen Laporan Wajib:</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                       ${docsConfig.map(d => {
-                        const docObj = docs[d.key] || { status: "Belum Mengisi" };
-                        let colorClass = "bg-rose-100 text-rose-800 border-rose-300";
-                        if (docObj.status === 'Valid') colorClass = "bg-emerald-100 text-emerald-800 border-emerald-300";
-                        if (docObj.status === 'Menunggu Validasi') colorClass = "bg-amber-100 text-amber-800 border-amber-300";
-
+                        const docObj = docs[d.key] || { status: "Belum Mengisi", notes: "-" };
                         return `
-                          <div class="p-2 rounded border text-center ${colorClass}">
-                            <span class="font-bold block text-[10px] truncate">${d.label}</span>
-                            <span class="text-[9px] font-semibold">${docObj.status}</span>
+                          <div class="p-2.5 rounded border bg-slate-50 flex items-center justify-between gap-2">
+                            <div class="truncate">
+                              <span class="font-bold block truncate">${d.label}</span>
+                              <span class="text-[10px] text-slate-500 block truncate">${docObj.notes || '-'}</span>
+                            </div>
+                            <div class="shrink-0 text-right">
+                              ${renderStatusBadge(docObj.status)}
+                            </div>
                           </div>
                         `;
                       }).join('')}
                     </div>
+                  </div>
+
+                  <!-- ITEM VALIDASI 2: ISIAN ANGKA MODUL UTAMA -->
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    
+                    <div class="bg-white p-3 rounded-lg border space-y-1">
+                      <span class="text-slate-500 font-bold block border-b pb-1">2. Data Siswa & Rombel</span>
+                      <p>Total Siswa: <strong>${totalSiswa} Siswa</strong></p>
+                      <p>Rombel: <strong>${s.siswa.r7 + s.siswa.r8 + s.siswa.r9} Rombel</strong></p>
+                      <div class="pt-2 flex gap-1">
+                        <button onclick="alert('Isian data siswa disetujui.')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-1 rounded">ACC Siswa</button>
+                      </div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-lg border space-y-1">
+                      <span class="text-slate-500 font-bold block border-b pb-1">3. Data SDM & Kepegawaian</span>
+                      <p>Guru: <strong>${totalGuru} Orang</strong> (GTY: ${s.pendidik.gty \vert{}\vert{} 0}, DPK:${s.pendidik.dpkPns || 0})</p>
+                      <p>Tendik: <strong>${s.tendik.L + s.tendik.P} Orang</strong></p>
+                      <div class="pt-2 flex gap-1">
+                        <button onclick="alert('Isian SDM disetujui.')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-1 rounded">ACC SDM</button>
+                      </div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-lg border space-y-1">
+                      <span class="text-slate-500 font-bold block border-b pb-1">4. Tarif Keuangan DOP & DSP</span>
+                      <p>DOP VII/VIII/IX: <strong>${formatRupiah(s.keuangan.dop7)}</strong></p>
+                      <p>DSP Kelas VII: <strong>${formatRupiah(s.keuangan.dsp7)}</strong></p>
+                      <div class="pt-2 flex gap-1">
+                        <button onclick="alert('Tarif keuangan disetujui.')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-1 rounded">ACC Keuangan</button>
+                      </div>
+                    </div>
+
                   </div>
 
                 </div>
@@ -1173,13 +1179,13 @@
       const s = db[ta].find(item => item.npsn === npsn);
 
       if (s) {
-        document.getElementById('modalTitle').innerText = `Rincian Input Data: ${s.nama}`;
+        document.getElementById('modalTitle').innerText = `Rincian Isian Data Lengkap: ${s.nama}`;
         const totalS = (s.siswa.k7L + s.siswa.k7P) + (s.siswa.k8L + s.siswa.k8P) + (s.siswa.k9L + s.siswa.k9P);
 
         document.getElementById('modalBody').innerHTML = `
           <div class="space-y-3">
             <div class="bg-slate-50 p-3 rounded border">
-              <span class="font-bold text-brand-blue block mb-1">A. Identitas Sekolah</span>
+              <span class="font-bold text-brand-blue block mb-1">A. Identitas & Kepala Sekolah</span>
               <div>• Kepala Sekolah: <strong>${s.kepalaSekolah}</strong></div>
               <div>• Akreditasi: <strong>${getAkreditasiText(s.akreditasi)}</strong></div>
               <div>• SK Pendirian: <strong>${s.legalitas?.skPendirian || '-'}</strong> (${s.legalitas?.tglSK || '-'})</div>
@@ -1200,7 +1206,7 @@
             </div>
 
             <div class="bg-slate-50 p-3 rounded border">
-              <span class="font-bold text-brand-blue block mb-1">D. Tarif Keuangan</span>
+              <span class="font-bold text-brand-blue block mb-1">D. Keuangan (DOP & DSP)</span>
               <div>• DOP Kelas 7/8/9: <strong>${formatRupiah(s.keuangan.dop7)} / bln</strong></div>
               <div>• DSP Kelas 7: <strong>${formatRupiah(s.keuangan.dsp7)}</strong></div>
             </div>
