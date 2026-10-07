@@ -108,7 +108,6 @@
   <script>
     lucide.createIcons();
 
-    // URL APPS SCRIPT
     const API_URL = "https://script.google.com/macros/s/AKfycbxOkf1R6Ucym4SXX2cqNwh0rzs05wxgdNcomND4cjyOZlPosoW6D75fMUTh5hn8isw/exec";
 
     const masterSekolahList = [
@@ -185,7 +184,6 @@
       try {
         let usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
 
-        // Ambil data user online dari Google Sheets
         const res = await fetch(`${API_URL}?action=getUsers`);
         const remoteUsers = await res.json();
 
@@ -204,7 +202,6 @@
           alert("Username/NPSN atau Kata Sandi salah. Silakan periksa kembali!");
         }
       } catch (err) {
-        // Fallback login lokal jika offline
         const usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
         const found = usersDB.find(u => (u.user && u.user.toLowerCase() === uVal.toLowerCase()) && u.pass === pVal);
 
@@ -254,16 +251,14 @@
         nama: school.nama
       };
 
-      // Simpan di local dulu
       usersDB.push(newUser);
       localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
 
-      // Kirim ke Google Sheets
       try {
         fetch(API_URL, {
           method: 'POST',
           mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify(newUser)
         });
       } catch (err) {
