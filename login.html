@@ -64,7 +64,7 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-brand-blue hover:bg-brand-blueDark text-white font-bold py-2.5 rounded-lg text-xs shadow transition">
+        <button type="submit" id="btnLoginSubmit" class="w-full bg-brand-blue hover:bg-brand-blueDark text-white font-bold py-2.5 rounded-lg text-xs shadow transition">
           Masuk ke Aplikasi
         </button>
       </form>
@@ -80,7 +80,6 @@
           <label class="block text-xs font-bold text-slate-600 mb-1">Pilih Sekolah</label>
           <select id="regSchoolSelect" onchange="autofillSchoolDetails()" required class="w-full p-2 border border-slate-300 rounded-lg text-xs outline-none bg-white font-medium">
             <option value="">-- Pilih Sekolah --</option>
-            <!-- Dynamic Options Injected from JS -->
           </select>
         </div>
 
@@ -99,7 +98,7 @@
           <input type="password" id="regPass" required placeholder="Buat password untuk akun sekolah" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-blue outline-none font-medium">
         </div>
 
-        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition">
+        <button type="submit" id="btnRegSubmit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition">
           Daftarkan Akun Sekolah
         </button>
       </form>
@@ -109,7 +108,9 @@
   <script>
     lucide.createIcons();
 
-    // MASTER DATA SEKOLAH & LANUD DARI TABEL
+    // URL APPS SCRIPT
+    const API_URL = "https://script.google.com/macros/s/AKfycbxOkf1R6Ucym4SXX2cqNwh0rzs05wxgdNcomND4cjyOZlPosoW6D75fMUTh5hn8isw/exec";
+
     const masterSekolahList = [
       { id: 'S01', nama: 'SMP ANGKASA SOEWONDO MEDAN', lanud: 'LANUD SOEWONDO MEDAN' },
       { id: 'S02', nama: 'SMP ANGKASA SUTAN SJAHRIR', lanud: 'LANUD SUTAN SJAHRIR' },
@@ -128,7 +129,6 @@
       { id: 'S15', nama: 'SMP ANGKASA ADI SUTJIPTO YOGYAKARTA', lanud: 'LANUD ADI SUTJIPTO YOGYAKARTA' }
     ];
 
-    // DATABASE USER DEFAULT
     const defaultUsers = [
       { user: 'admin', pass: 'admin123', role: 'ADMIN', nama: 'Admin Pusat' },
       { user: 'pimpinan', pass: 'pimpinan123', role: 'VIEWER', nama: 'Pimpinan' }
@@ -138,7 +138,6 @@
       localStorage.setItem('sidsa_users_v10', JSON.stringify(defaultUsers));
     }
 
-    // GENERATE OPSI SEKOLAH PADA SAAT HALAMAN DIBUKA
     window.onload = function() {
       const selectElem = document.getElementById('regSchoolSelect');
       masterSekolahList.forEach(s => {
@@ -149,16 +148,10 @@
       });
     };
 
-    // FUNGSI AUTOFILL NAMA LANUD
     function autofillSchoolDetails() {
       const selectedId = document.getElementById('regSchoolSelect').value;
       const school = masterSekolahList.find(s => s.id === selectedId);
-
-      if (school) {
-        document.getElementById('regCabang').value = school.lanud;
-      } else {
-        document.getElementById('regCabang').value = '';
-      }
+      document.getElementById('regCabang').value = school ? school.lanud : '';
     }
 
     function switchTab(tab) {
@@ -180,90 +173,108 @@
       }
     }
 
-    function handleLogin(e) {
+    async function handleLogin(e) {
       e.preventDefault();
       const uVal = document.getElementById('loginUser').value.trim();
       const pVal = document.getElementById('loginPass').value.trim();
+      const btn = document.getElementById('btnLoginSubmit');
 
-      const usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
-      const found = usersDB.find(u => u.user.toLowerCase() === uVal.toLowerCase() && u.pass === pVal);
+      btn.innerText = "Memeriksa...";
+      btn.disabled = true;
 
-      if (found) {
-        localStorage.setItem('sidsa_session_v10', JSON.stringify(found));
-        alert(`Login Berhasil! Selamat datang, ${found.nama}`);
-        window.location.href = 'index.html';
-      } else {
-        alert("Username atau Kata Sandi salah. Silakan periksa kembali!");
+      try {
+        let usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
+
+        // Ambil data user online dari Google Sheets
+        const res = await fetch(`${API_URL}?action=getUsers`);
+        const remoteUsers = await res.json();
+
+        if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+          usersDB = remoteUsers;
+          localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
+        }
+
+        const found = usersDB.find(u => (u.user && u.user.toLowerCase() === uVal.toLowerCase()) && u.pass === pVal);
+
+        if (found) {
+          localStorage.setItem('sidsa_session_v10', JSON.stringify(found));
+          alert(`Login Berhasil! Selamat datang, ${found.nama}`);
+          window.location.href = 'index.html';
+        } else {
+          alert("Username/NPSN atau Kata Sandi salah. Silakan periksa kembali!");
+        }
+      } catch (err) {
+        // Fallback login lokal jika offline
+        const usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
+        const found = usersDB.find(u => (u.user && u.user.toLowerCase() === uVal.toLowerCase()) && u.pass === pVal);
+
+        if (found) {
+          localStorage.setItem('sidsa_session_v10', JSON.stringify(found));
+          alert(`Login Berhasil (Mode Offline)! Selamat datang, ${found.nama}`);
+          window.location.href = 'index.html';
+        } else {
+          alert("Username/NPSN atau Kata Sandi salah.");
+        }
+      } finally {
+        btn.innerText = "Masuk ke Aplikasi";
+        btn.disabled = false;
       }
     }
 
-    function handleRegister(e) {
+    async function handleRegister(e) {
       e.preventDefault();
       const schoolId = document.getElementById('regSchoolSelect').value;
       const npsn = document.getElementById('regNpsn').value.trim();
       const pass = document.getElementById('regPass').value.trim();
+      const btn = document.getElementById('btnRegSubmit');
 
-      if (!schoolId) {
-        alert("Silakan pilih sekolah terlebih dahulu!");
-        return;
-      }
-
-      if (!npsn) {
-        alert("Silakan masukkan nomor NPSN sekolah!");
+      if (!schoolId || !npsn || !pass) {
+        alert("Lengkapi semua isian registrasi!");
         return;
       }
 
       const school = masterSekolahList.find(s => s.id === schoolId);
       let usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
 
-      // VALIDASI REGISTRASI 1 KALI PER SEKOLAH
       if (usersDB.find(u => u.schoolId === schoolId || u.user === npsn)) {
-        alert(`Pendaftaran Gagal!\n\n${school.nama} atau NPSN (${npsn}) sudah terdaftar sebelumnya. Hanya diperbolehkan 1 akun per sekolah. Silakan langsung Login.`);
+        alert(`Pendaftaran Gagal!\n\n${school.nama} atau NPSN (${npsn}) sudah terdaftar sebelumnya.`);
         return;
       }
 
-      // TAMBAH USER AKUN SEKOLAH
-      const newUser = { user: npsn, pass: pass, role: 'SEKOLAH', npsn: npsn, schoolId: schoolId, nama: school.nama };
+      btn.innerText = "Mendaftarkan...";
+      btn.disabled = true;
+
+      const newUser = {
+        action: "saveUser",
+        user: npsn,
+        pass: pass,
+        role: 'SEKOLAH',
+        npsn: npsn,
+        schoolId: schoolId,
+        nama: school.nama
+      };
+
+      // Simpan di local dulu
       usersDB.push(newUser);
       localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
 
-      // BUAT DATA DUMMY AWAL UNTUK SEKOLAH TERSEBUT
-      let mainDB = JSON.parse(localStorage.getItem('sidsa_db_v10')) || {};
-      if (!mainDB["2026/2027"]) mainDB["2026/2027"] = [];
-
-      if (!mainDB["2026/2027"].find(s => s.npsn === npsn)) {
-        mainDB["2026/2027"].push({
-          npsn: npsn,
-          nama: school.nama,
-          cabang: school.lanud,
-          akreditasi: "A",
-          tahunAkreditasi: "2024",
-          kepalaSekolah: "Kepala Sekolah",
-          statusValidation: "Belum Mengisi",
-          lastUpdate: new Date().toISOString().split('T')[0],
-          legalitas: { skPendirian: "-", tglSK: "-" },
-          siswa: { k7L: 0, k7P: 0, r7: 0, k8L: 0, k8P: 0, r8: 0, k9L: 0, k9P: 0, r9: 0 },
-          pendidik: { L: 0, P: 0, gty: 0, cgty: 0, dpkPns: 0 },
-          tendik: { L: 0, P: 0, kty: 0, ckty: 0 },
-          keuangan: { dop7: 0, dop8: 0, dop9: 0, dsp7: 0, dsp8: 0, dsp9: 0 },
-          dokumenLaporan: {
-            rkas: { status: "Belum Mengisi", notes: "", fileName: "" },
-            rpss: { status: "Belum Mengisi", notes: "", fileName: "" },
-            raporPendidikan: { status: "Belum Mengisi", notes: "", fileName: "" },
-            mpls: { status: "Belum Mengisi", notes: "", fileName: "" },
-            kaldik: { status: "Belum Mengisi", notes: "", fileName: "" },
-            sarpras: { status: "Belum Mengisi", notes: "", fileName: "" },
-            medsos: { status: "Belum Mengisi", notes: "", fileName: "" },
-            jadwalPelajaran: { status: "Belum Mengisi", notes: "", fileName: "" },
-            skPembagianTugas: { status: "Belum Mengisi", notes: "", fileName: "" }
-          }
+      // Kirim ke Google Sheets
+      try {
+        fetch(API_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newUser)
         });
-        localStorage.setItem('sidsa_db_v10', JSON.stringify(mainDB));
+      } catch (err) {
+        console.error("Gagal kirim ke Google Sheets:", err);
       }
 
-      alert(`Registrasi ${school.nama} Berhasil!\n\nSilakan Login menggunakan NPSN (${npsn}) dan Kata Sandi yang baru Anda buat.`);
+      alert(`Registrasi ${school.nama} Berhasil!\n\nSilakan Login menggunakan NPSN (${npsn}) dan Kata Sandi baru.`);
       switchTab('login');
       document.getElementById('loginUser').value = npsn;
+      btn.innerText = "Daftarkan Akun Sekolah";
+      btn.disabled = false;
     }
   </script>
 </body>
