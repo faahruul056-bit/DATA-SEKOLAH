@@ -118,7 +118,6 @@
   </div>
 
   <script>
-    // URL APPS SCRIPT
     const API_URL = "https://script.google.com/macros/s/AKfycbxOkf1R6Ucym4SXX2cqNwh0rzs05wxgdNcomND4cjyOZlPosoW6D75fMUTh5hn8isw/exec";
 
     const docsConfig = [
@@ -140,13 +139,13 @@
 
     if (!db["2026/2027"]) db["2026/2027"] = [];
 
-    // FUNGSI SIMPAN SINKRON KE GOOGLE SHEETS
+    // FUNGSI SAVEDB TERHUBUNG DENGAN SINKRONISASI TEXT/PLAIN
     function saveDB() {
       localStorage.setItem('sidsa_db_v10', JSON.stringify(db));
 
       fetch(API_URL, {
         method: "POST",
-        mode: "text/plain",
+        mode: "no-cors",
         headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ action: "saveDB", db: db })
       })
@@ -209,7 +208,6 @@
       renderFilterControls();
       renderPage('dashboard');
 
-      // Ambil data real-time dari Google Sheets saat aplikasi dimuat
       fetch(`${API_URL}?action=getDB`)
         .then(res => res.json())
         .then(remoteDB => {
