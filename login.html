@@ -26,6 +26,7 @@
 <body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex items-center justify-center p-4">
 
   <div class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+    <!-- HEADER APP -->
     <div class="bg-brand-blue p-6 text-white text-center space-y-2">
       <div class="inline-flex bg-white p-3 rounded-xl text-brand-blue shadow">
         <i data-lucide="graduation-cap" class="w-8 h-8"></i>
@@ -34,6 +35,7 @@
       <p class="text-xs text-blue-200">Sistem Informasi Data SMP Angkasa</p>
     </div>
 
+    <!-- TAB SWITCHER -->
     <div class="flex border-b border-slate-200 text-xs font-bold bg-slate-50">
       <button id="tabBtnLogin" onclick="switchTab('login')" class="flex-1 py-3 text-center border-b-2 border-brand-blue text-brand-blue font-bold">
         Masuk / Login
@@ -62,8 +64,8 @@
           </div>
         </div>
 
-        <button type="submit" id="btnLoginSubmit" class="w-full bg-brand-blue hover:bg-brand-blueDark text-white font-bold py-2.5 rounded-lg text-xs shadow transition flex justify-center items-center gap-2">
-          <span>Masuk ke Aplikasi</span>
+        <button type="submit" class="w-full bg-brand-blue hover:bg-brand-blueDark text-white font-bold py-2.5 rounded-lg text-xs shadow transition">
+          Masuk ke Aplikasi
         </button>
       </form>
 
@@ -78,6 +80,7 @@
           <label class="block text-xs font-bold text-slate-600 mb-1">Pilih Sekolah</label>
           <select id="regSchoolSelect" onchange="autofillSchoolDetails()" required class="w-full p-2 border border-slate-300 rounded-lg text-xs outline-none bg-white font-medium">
             <option value="">-- Pilih Sekolah --</option>
+            <!-- Dynamic Options Injected from JS -->
           </select>
         </div>
 
@@ -96,8 +99,8 @@
           <input type="password" id="regPass" required placeholder="Buat password untuk akun sekolah" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-blue outline-none font-medium">
         </div>
 
-        <button type="submit" id="btnRegSubmit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition flex justify-center items-center gap-2">
-          <span>Daftarkan Akun Sekolah</span>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition">
+          Daftarkan Akun Sekolah
         </button>
       </form>
     </div>
@@ -106,9 +109,7 @@
   <script>
     lucide.createIcons();
 
-    // URL WEB APP TERBARU
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxP77FqMcZMJnlmSijxQ0pXWMUR1vFJxD7p3j3hMcqaHh9hS_bP-ZXGbr9Je7NUNQ47/exec";
-
+    // MASTER DATA SEKOLAH & LANUD DARI TABEL
     const masterSekolahList = [
       { id: 'S01', nama: 'SMP ANGKASA SOEWONDO MEDAN', lanud: 'LANUD SOEWONDO MEDAN' },
       { id: 'S02', nama: 'SMP ANGKASA SUTAN SJAHRIR', lanud: 'LANUD SUTAN SJAHRIR' },
@@ -127,6 +128,7 @@
       { id: 'S15', nama: 'SMP ANGKASA ADI SUTJIPTO YOGYAKARTA', lanud: 'LANUD ADI SUTJIPTO YOGYAKARTA' }
     ];
 
+    // DATABASE USER DEFAULT
     const defaultUsers = [
       { user: 'admin', pass: 'admin123', role: 'ADMIN', nama: 'Admin Pusat' },
       { user: 'pimpinan', pass: 'pimpinan123', role: 'VIEWER', nama: 'Pimpinan' }
@@ -136,6 +138,7 @@
       localStorage.setItem('sidsa_users_v10', JSON.stringify(defaultUsers));
     }
 
+    // GENERATE OPSI SEKOLAH PADA SAAT HALAMAN DIBUKA
     window.onload = function() {
       const selectElem = document.getElementById('regSchoolSelect');
       masterSekolahList.forEach(s => {
@@ -146,9 +149,11 @@
       });
     };
 
+    // FUNGSI AUTOFILL NAMA LANUD
     function autofillSchoolDetails() {
       const selectedId = document.getElementById('regSchoolSelect').value;
       const school = masterSekolahList.find(s => s.id === selectedId);
+
       if (school) {
         document.getElementById('regCabang').value = school.lanud;
       } else {
@@ -192,88 +197,71 @@
       }
     }
 
-    async function handleRegister(e) {
+    function handleRegister(e) {
       e.preventDefault();
       const schoolId = document.getElementById('regSchoolSelect').value;
       const npsn = document.getElementById('regNpsn').value.trim();
       const pass = document.getElementById('regPass').value.trim();
 
-      if (!schoolId || !npsn) {
-        alert("Silakan lengkapi pilihan sekolah dan NPSN!");
+      if (!schoolId) {
+        alert("Silakan pilih sekolah terlebih dahulu!");
+        return;
+      }
+
+      if (!npsn) {
+        alert("Silakan masukkan nomor NPSN sekolah!");
         return;
       }
 
       const school = masterSekolahList.find(s => s.id === schoolId);
       let usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
 
+      // VALIDASI REGISTRASI 1 KALI PER SEKOLAH
       if (usersDB.find(u => u.schoolId === schoolId || u.user === npsn)) {
-        alert(`Pendaftaran Gagal!\n\n${school.nama} atau NPSN (${npsn}) sudah terdaftar sebelumnya.`);
+        alert(`Pendaftaran Gagal!\n\n${school.nama} atau NPSN (${npsn}) sudah terdaftar sebelumnya. Hanya diperbolehkan 1 akun per sekolah. Silakan langsung Login.`);
         return;
       }
 
-      const btnSubmit = document.getElementById('btnRegSubmit');
-      btnSubmit.disabled = true;
-      btnSubmit.innerText = "Mendaftarkan...";
-
+      // TAMBAH USER AKUN SEKOLAH
       const newUser = { user: npsn, pass: pass, role: 'SEKOLAH', npsn: npsn, schoolId: schoolId, nama: school.nama };
       usersDB.push(newUser);
       localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
 
-      let localDB = JSON.parse(localStorage.getItem('sidsa_db_v10')) || { "2026/2027": [] };
-      if (!localDB["2026/2027"]) localDB["2026/2027"] = [];
+      // BUAT DATA DUMMY AWAL UNTUK SEKOLAH TERSEBUT
+      let mainDB = JSON.parse(localStorage.getItem('sidsa_db_v10')) || {};
+      if (!mainDB["2026/2027"]) mainDB["2026/2027"] = [];
 
-      const newSchoolData = {
-        npsn: npsn,
-        nama: school.nama,
-        cabang: school.lanud,
-        akreditasi: "A",
-        tahunAkreditasi: "2024",
-        kepalaSekolah: "",
-        statusValidation: "Belum Mengisi",
-        legalitas: { skPendirian: "-", tglSK: "-" },
-        siswa: { k7L: 0, k7P: 0, r7: 0, k8L: 0, k8P: 0, r8: 0, k9L: 0, k9P: 0, r9: 0 },
-        pendidik: { L: 0, P: 0, gty: 0, cgty: 0, dpkPns: 0 },
-        tendik: { L: 0, P: 0, kty: 0, ckty: 0 },
-        keuangan: { dopUmum7: 0, dopUmum8: 0, dopUmum9: 0, dopTniau7: 0, dopTniau8: 0, dopTniau9: 0, dspGel1: 0, dspGel2: 0, dspGel3: 0 },
-        dokumenLaporan: {}
-      };
-
-      localDB["2026/2027"].push(newSchoolData);
-      localStorage.setItem('sidsa_db_v10', JSON.stringify(localDB));
-
-      try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "register_user",
-            user: npsn,
-            pass: pass,
-            role: "SEKOLAH",
-            nama: school.nama,
-            schoolId: schoolId
-          })
+      if (!mainDB["2026/2027"].find(s => s.npsn === npsn)) {
+        mainDB["2026/2027"].push({
+          npsn: npsn,
+          nama: school.nama,
+          cabang: school.lanud,
+          akreditasi: "A",
+          tahunAkreditasi: "2024",
+          kepalaSekolah: "Kepala Sekolah",
+          statusValidation: "Belum Mengisi",
+          lastUpdate: new Date().toISOString().split('T')[0],
+          legalitas: { skPendirian: "-", tglSK: "-" },
+          siswa: { k7L: 0, k7P: 0, r7: 0, k8L: 0, k8P: 0, r8: 0, k9L: 0, k9P: 0, r9: 0 },
+          pendidik: { L: 0, P: 0, gty: 0, cgty: 0, dpkPns: 0 },
+          tendik: { L: 0, P: 0, kty: 0, ckty: 0 },
+          keuangan: { dop7: 0, dop8: 0, dop9: 0, dsp7: 0, dsp8: 0, dsp9: 0 },
+          dokumenLaporan: {
+            rkas: { status: "Belum Mengisi", notes: "", fileName: "" },
+            rpss: { status: "Belum Mengisi", notes: "", fileName: "" },
+            raporPendidikan: { status: "Belum Mengisi", notes: "", fileName: "" },
+            mpls: { status: "Belum Mengisi", notes: "", fileName: "" },
+            kaldik: { status: "Belum Mengisi", notes: "", fileName: "" },
+            sarpras: { status: "Belum Mengisi", notes: "", fileName: "" },
+            medsos: { status: "Belum Mengisi", notes: "", fileName: "" },
+            jadwalPelajaran: { status: "Belum Mengisi", notes: "", fileName: "" },
+            skPembagianTugas: { status: "Belum Mengisi", notes: "", fileName: "" }
+          }
         });
-
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "save_school_data",
-            ta: "2026/2027",
-            ...newSchoolData
-          })
-        });
-      } catch (err) {
-        console.error("Gagal kirim data registrasi ke Cloud:", err);
+        localStorage.setItem('sidsa_db_v10', JSON.stringify(mainDB));
       }
 
-      btnSubmit.disabled = false;
-      btnSubmit.innerText = "Daftarkan Akun Sekolah";
-
-      alert(`Registrasi ${school.nama} Berhasil!\n\nSilakan Login menggunakan NPSN (${npsn}) dan Kata Sandi Anda.`);
+      alert(`Registrasi ${school.nama} Berhasil!\n\nSilakan Login menggunakan NPSN (${npsn}) dan Kata Sandi yang baru Anda buat.`);
       switchTab('login');
       document.getElementById('loginUser').value = npsn;
     }
