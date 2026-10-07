@@ -26,7 +26,6 @@
 <body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex items-center justify-center p-4">
 
   <div class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-    <!-- HEADER APP -->
     <div class="bg-brand-blue p-6 text-white text-center space-y-2">
       <div class="inline-flex bg-white p-3 rounded-xl text-brand-blue shadow">
         <i data-lucide="graduation-cap" class="w-8 h-8"></i>
@@ -35,7 +34,6 @@
       <p class="text-xs text-blue-200">Sistem Informasi Data SMP Angkasa</p>
     </div>
 
-    <!-- TAB SWITCHER -->
     <div class="flex border-b border-slate-200 text-xs font-bold bg-slate-50">
       <button id="tabBtnLogin" onclick="switchTab('login')" class="flex-1 py-3 text-center border-b-2 border-brand-blue text-brand-blue font-bold">
         Masuk / Login
@@ -80,7 +78,6 @@
           <label class="block text-xs font-bold text-slate-600 mb-1">Pilih Sekolah</label>
           <select id="regSchoolSelect" onchange="autofillSchoolDetails()" required class="w-full p-2 border border-slate-300 rounded-lg text-xs outline-none bg-white font-medium">
             <option value="">-- Pilih Sekolah --</option>
-            <!-- Dynamic Options Injected from JS -->
           </select>
         </div>
 
@@ -109,7 +106,6 @@
   <script>
     lucide.createIcons();
 
-    // WEB APP URL GOOGLE APPS SCRIPT
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyL1hTaSaYSmluvAmJhrGIL15HBzYx1qptUT-E7rKcBmJ4c7hGPkzPYyQHuVoFVHLL_/exec";
 
     const masterSekolahList = [
@@ -152,7 +148,6 @@
     function autofillSchoolDetails() {
       const selectedId = document.getElementById('regSchoolSelect').value;
       const school = masterSekolahList.find(s => s.id === selectedId);
-
       if (school) {
         document.getElementById('regCabang').value = school.lanud;
       } else {
@@ -223,7 +218,31 @@
       usersDB.push(newUser);
       localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
 
-      // KIRIM KE GOOGLE SHEETS VIA APPS SCRIPT
+      // BUAT KANTO NGINPUT OTOMATIS DI DATABASE LOCAL
+      let localDB = JSON.parse(localStorage.getItem('sidsa_db_v10')) || { "2026/2027": [] };
+      if (!localDB["2026/2027"]) localDB["2026/2027"] = [];
+
+      const newSchoolData = {
+        npsn: npsn,
+        nama: school.nama,
+        cabang: school.lanud,
+        akreditasi: "A",
+        tahunAkreditasi: "2024",
+        kepalaSekolah: "",
+        statusValidation: "Belum Mengisi",
+        lastUpdate: new Date().toISOString().split('T')[0],
+        legalitas: { skPendirian: "-", tglSK: "-" },
+        siswa: { k7L: 0, k7P: 0, r7: 0, k8L: 0, k8P: 0, r8: 0, k9L: 0, k9P: 0, r9: 0 },
+        pendidik: { L: 0, P: 0, gty: 0, cgty: 0, dpkPns: 0 },
+        tendik: { L: 0, P: 0, kty: 0, ckty: 0 },
+        keuangan: { dopUmum7: 0, dopUmum8: 0, dopUmum9: 0, dopTniau7: 0, dopTniau8: 0, dopTniau9: 0, dspGel1: 0, dspGel2: 0, dspGel3: 0 },
+        dokumenLaporan: {}
+      };
+
+      localDB["2026/2027"].push(newSchoolData);
+      localStorage.setItem('sidsa_db_v10', JSON.stringify(localDB));
+
+      // KIRIM REGISTRASI DARI SEKOLAH KE GOOGLE SHEETS
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
@@ -234,6 +253,15 @@
             role: "SEKOLAH",
             nama: school.nama,
             schoolId: schoolId
+          })
+        });
+
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "save_school_data",
+            ta: "2026/2027",
+            ...newSchoolData
           })
         });
       } catch (err) {
