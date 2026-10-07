@@ -218,7 +218,7 @@
       usersDB.push(newUser);
       localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
 
-      // BUAT KANTO NGINPUT OTOMATIS DI DATABASE LOCAL
+      // KANTONG DATA LOKAL
       let localDB = JSON.parse(localStorage.getItem('sidsa_db_v10')) || { "2026/2027": [] };
       if (!localDB["2026/2027"]) localDB["2026/2027"] = [];
 
@@ -230,7 +230,6 @@
         tahunAkreditasi: "2024",
         kepalaSekolah: "",
         statusValidation: "Belum Mengisi",
-        lastUpdate: new Date().toISOString().split('T')[0],
         legalitas: { skPendirian: "-", tglSK: "-" },
         siswa: { k7L: 0, k7P: 0, r7: 0, k8L: 0, k8P: 0, r8: 0, k9L: 0, k9P: 0, r9: 0 },
         pendidik: { L: 0, P: 0, gty: 0, cgty: 0, dpkPns: 0 },
@@ -242,10 +241,12 @@
       localDB["2026/2027"].push(newSchoolData);
       localStorage.setItem('sidsa_db_v10', JSON.stringify(localDB));
 
-      // KIRIM REGISTRASI DARI SEKOLAH KE GOOGLE SHEETS
+      // SINKRON KE GOOGLE SHEETS VIA MODE NO-CORS
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "register_user",
             user: npsn,
@@ -258,6 +259,8 @@
 
         await fetch(SCRIPT_URL, {
           method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "save_school_data",
             ta: "2026/2027",
@@ -265,7 +268,7 @@
           })
         });
       } catch (err) {
-        console.error("Gagal sinkron ke Sheets:", err);
+        console.error("Gagal kirim data registrasi ke Cloud:", err);
       }
 
       btnSubmit.disabled = false;
