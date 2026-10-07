@@ -106,7 +106,8 @@
   <script>
     lucide.createIcons();
 
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyL1hTaSaYSmluvAmJhrGIL15HBzYx1qptUT-E7rKcBmJ4c7hGPkzPYyQHuVoFVHLL_/exec";
+    // URL WEB APP TERBARU
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxP77FqMcZMJnlmSijxQ0pXWMUR1vFJxD7p3j3hMcqaHh9hS_bP-ZXGbr9Je7NUNQ47/exec";
 
     const masterSekolahList = [
       { id: 'S01', nama: 'SMP ANGKASA SOEWONDO MEDAN', lanud: 'LANUD SOEWONDO MEDAN' },
@@ -218,7 +219,6 @@
       usersDB.push(newUser);
       localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
 
-      // KANTONG DATA LOKAL
       let localDB = JSON.parse(localStorage.getItem('sidsa_db_v10')) || { "2026/2027": [] };
       if (!localDB["2026/2027"]) localDB["2026/2027"] = [];
 
@@ -241,7 +241,6 @@
       localDB["2026/2027"].push(newSchoolData);
       localStorage.setItem('sidsa_db_v10', JSON.stringify(localDB));
 
-      // SINKRON KE GOOGLE SHEETS VIA MODE NO-CORS
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
