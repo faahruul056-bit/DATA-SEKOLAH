@@ -327,11 +327,16 @@
           nama: s.nama,
           cabang: s.cabang,
           akreditasi: s.akreditasi || "A",
-          tahunAkreditasi: s.tahunAkreditasi || "2024",
+          tahunAkreditasi: s.tahunAkreditasi || "",
           kepalaSekolah: s.kepalaSekolah || "",
           statusValidation: "Belum Mengisi",
           lastUpdate: new Date().toISOString().split('T')[0],
-          legalitas: { skPendirian: s.legalitas?.skPendirian || "-", tglSK: s.legalitas?.tglSK || "-" },
+          legalitas: {
+            skPendirian: s.legalitas?.skPendirian || "-",
+            tglSK: s.legalitas?.tglSK || "-",
+            skIzin: s.legalitas?.skIzin || "-",
+            tglSKIzin: s.legalitas?.tglSKIzin || "-"
+          },
           siswa: { k7L: 0, k7P: 0, r7: 0, k8L: 0, k8P: 0, r8: 0, k9L: 0, k9P: 0, r9: 0 },
           pendidik: { L: 0, P: 0, gty: 0, cgty: 0, dpkPns: 0 },
           tendik: { L: 0, P: 0, kty: 0, ckty: 0 },
@@ -669,12 +674,15 @@
                     </div>
                     <div>
                       <label class="block font-semibold text-slate-600 mb-1">Akreditasi</label>
-                      <select id="id_akreditasi_${s.npsn}" class="w-full p-2 border rounded-md bg-white focus:ring-2 focus:ring-brand-blue outline-none font-medium">
-                        <option value="A" ${s.akreditasi === 'A' ? 'selected' : ''}>A (Predikat Unggul)</option>
-                        <option value="B" ${s.akreditasi === 'B' ? 'selected' : ''}>B (Predikat Sangat Baik)</option>
-                        <option value="C" ${s.akreditasi === 'C' ? 'selected' : ''}>C (Predikat Baik)</option>
-                        <option value="D" ${s.akreditasi === 'D' ? 'selected' : ''}>D (Tidak Terakreditasi)</option>
-                      </select>
+                      <div class="grid grid-cols-3 gap-2">
+                        <select id="id_akreditasi_${s.npsn}" class="col-span-2 p-2 border rounded-md bg-white focus:ring-2 focus:ring-brand-blue outline-none font-medium">
+                          <option value="A" ${s.akreditasi === 'A' ? 'selected' : ''}>A (Predikat Unggul)</option>
+                          <option value="B" ${s.akreditasi === 'B' ? 'selected' : ''}>B (Predikat Sangat Baik)</option>
+                          <option value="C" ${s.akreditasi === 'C' ? 'selected' : ''}>C (Predikat Baik)</option>
+                          <option value="D" ${s.akreditasi === 'D' ? 'selected' : ''}>D (Tidak Terakreditasi)</option>
+                        </select>
+                        <input type="number" id="id_thnakreditasi_${s.npsn}" value="${s.tahunAkreditasi || ''}" placeholder="Tahun" min="1990" max="2099" class="p-2 border rounded-md bg-white focus:ring-2 focus:ring-brand-blue outline-none font-medium">
+                      </div>
                     </div>
                     <div>
                       <label class="block font-semibold text-slate-600 mb-1">Nomor SK Pendirian</label>
@@ -684,16 +692,25 @@
                       <label class="block font-semibold text-slate-600 mb-1">Tanggal SK Pendirian</label>
                       <input type="date" id="id_tglsk_${s.npsn}" value="${s.legalitas?.tglSK || ''}" class="w-full p-2 border rounded-md bg-white focus:ring-2 focus:ring-brand-blue outline-none font-medium">
                     </div>
+                    <div>
+                      <label class="block font-semibold text-slate-600 mb-1">Nomor SK Izin Operasional</label>
+                      <input type="text" id="id_sk_izin_${s.npsn}" value="${s.legalitas?.skIzin || ''}" class="w-full p-2 border rounded-md bg-white focus:ring-2 focus:ring-brand-blue outline-none font-medium">
+                    </div>
+                    <div>
+                      <label class="block font-semibold text-slate-600 mb-1">Tanggal SK Izin Operasional</label>
+                      <input type="date" id="id_tglsk_izin_${s.npsn}" value="${s.legalitas?.tglSKIzin || ''}" class="w-full p-2 border rounded-md bg-white focus:ring-2 focus:ring-brand-blue outline-none font-medium">
+                    </div>
                     <div class="md:col-span-2 text-right">
                       <button type="submit" class="bg-brand-blue hover:bg-brand-blueDark text-white font-bold px-4 py-2 rounded-lg shadow text-xs">Simpan Identitas</button>
                     </div>
                   </form>
                 ` : `
-                  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                  <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                     <div><span class="text-slate-400 block">NPSN</span><strong>${s.npsn}</strong></div>
                     <div><span class="text-slate-400 block">Kepala Sekolah</span><strong>${s.kepalaSekolah || '-'}</strong></div>
-                    <div><span class="text-slate-400 block">Akreditasi</span><strong>${getAkreditasiText(s.akreditasi)} (${s.tahunAkreditasi || '-'})</strong></div>
-                    <div><span class="text-slate-400 block">SK Pendirian</span><strong>${s.legalitas?.skPendirian || '-'}</strong></div>
+                    <div><span class="text-slate-400 block">Akreditasi</span><strong>${getAkreditasiText(s.akreditasi)} ${s.tahunAkreditasi ? `(${s.tahunAkreditasi})` : ''}</strong></div>
+                    <div><span class="text-slate-400 block">SK Pendirian</span><strong>${s.legalitas?.skPendirian || '-'}</strong> ${s.legalitas?.tglSK ? `<span class="text-slate-400">(${s.legalitas.tglSK})</span>` : ''}</div>
+                    <div><span class="text-slate-400 block">SK Izin Operasional</span><strong>${s.legalitas?.skIzin || '-'}</strong> ${s.legalitas?.tglSKIzin ? `<span class="text-slate-400">(${s.legalitas.tglSKIzin})</span>` : ''}</div>
                   </div>
                 `}
               </div>
@@ -711,9 +728,12 @@
       if (school) {
         school.kepalaSekolah = document.getElementById(`id_kepsek_${npsn}`).value;
         school.akreditasi = document.getElementById(`id_akreditasi_${npsn}`).value;
+        school.tahunAkreditasi = document.getElementById(`id_thnakreditasi_${npsn}`).value;
         if (!school.legalitas) school.legalitas = {};
         school.legalitas.skPendirian = document.getElementById(`id_sk_${npsn}`).value;
         school.legalitas.tglSK = document.getElementById(`id_tglsk_${npsn}`).value;
+        school.legalitas.skIzin = document.getElementById(`id_sk_izin_${npsn}`).value;
+        school.legalitas.tglSKIzin = document.getElementById(`id_tglsk_izin_${npsn}`).value;
         school.statusValidation = "Menunggu Validasi";
         saveDB();
         alert("Data Identitas Sekolah Berhasil Disimpan!");
@@ -1352,8 +1372,9 @@
             <div class="bg-slate-50 p-3 rounded border">
               <span class="font-bold text-brand-blue block mb-1">A. Identitas & Kepala Sekolah</span>
               <div>• Kepala Sekolah: <strong>${s.kepalaSekolah || '-'}</strong></div>
-              <div>• Akreditasi: <strong>${getAkreditasiText(s.akreditasi)}</strong></div>
+              <div>• Akreditasi: <strong>${getAkreditasiText(s.akreditasi)} ${s.tahunAkreditasi ? `(${s.tahunAkreditasi})` : ''}</strong></div>
               <div>• SK Pendirian: <strong>${s.legalitas?.skPendirian || '-'}</strong> (${s.legalitas?.tglSK || '-'})</div>
+              <div>• SK Izin Operasional: <strong>${s.legalitas?.skIzin || '-'}</strong> (${s.legalitas?.tglSKIzin || '-'})</div>
             </div>
 
             <div class="bg-slate-50 p-3 rounded border">
