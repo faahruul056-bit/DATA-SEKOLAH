@@ -3,19 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistem Informasi Data SMP Angkasa (SIDSA)</title>
-  <!-- Tailwind CSS CDN -->
+  <title>Login - Sistem Informasi Data SMP Angkasa</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>
-    const currentSession = JSON.parse(localStorage.getItem('sidsa_session_v10'));
-    if (!currentSession) {
-      window.location.href = 'login.html';
-    }
-
     tailwind.config = {
       theme: {
         extend: {
@@ -24,8 +15,7 @@
               blue: '#0052cc',
               blueDark: '#003d99',
               blueLight: '#e6f0ff',
-              orange: '#ffab00',
-              grayBg: '#f8fafc'
+              orange: '#ffab00'
             }
           }
         }
@@ -33,393 +23,258 @@
     }
   </script>
 </head>
-<body class="bg-brand-grayBg font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex items-center justify-center p-4">
 
-  <!-- TOP HEADER -->
-  <header class="bg-brand-blue text-white shadow-md sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="bg-white p-2 rounded-lg text-brand-blue font-bold text-xl shadow">
-          <i data-lucide="graduation-cap" class="w-7 h-7"></i>
-        </div>
-        <div>
-          <h1 class="font-extrabold text-lg leading-tight tracking-wide">SIDSA</h1>
-          <p class="text-xs text-blue-200">Sistem Informasi Data SMP Angkasa</p>
-        </div>
+  <div class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+    <div class="bg-brand-blue p-6 text-white text-center space-y-2">
+      <div class="inline-flex bg-white p-3 rounded-xl text-brand-blue shadow">
+        <i data-lucide="graduation-cap" class="w-8 h-8"></i>
       </div>
-
-      <div class="flex items-center gap-3" id="topHeaderRightControls">
-        <!-- Injected via JS -->
-      </div>
+      <h1 class="text-xl font-black tracking-wide">SIDSA</h1>
+      <p class="text-xs text-blue-200">Sistem Informasi Data SMP Angkasa</p>
     </div>
-  </header>
 
-  <div class="flex flex-1 max-w-7xl w-full mx-auto px-4 py-6 gap-6">
+    <div class="flex border-b border-slate-200 text-xs font-bold bg-slate-50">
+      <button id="tabBtnLogin" onclick="switchTab('login')" class="flex-1 py-3 text-center border-b-2 border-brand-blue text-brand-blue font-bold">
+        Masuk / Login
+      </button>
+      <button id="tabBtnRegister" onclick="switchTab('register')" class="flex-1 py-3 text-center text-slate-400 hover:text-slate-600 font-bold">
+        Buat Akun Sekolah
+      </button>
+    </div>
 
-    <!-- SIDEBAR NAVIGATION -->
-    <aside class="w-64 bg-white rounded-xl shadow-sm border border-slate-200 p-4 shrink-0 hidden md:block">
-      <div class="mb-4 px-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Menu Utama</div>
-      <nav class="space-y-1" id="sidebarMenu"></nav>
-    </aside>
-
-    <!-- MAIN CONTENT AREA -->
-    <main class="flex-1 space-y-6 overflow-hidden">
-
-      <!-- GLOBAL FILTER BAR -->
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
-        <div class="flex flex-wrap items-center gap-3" id="filterControlsContainer">
-          <!-- Dynamic Filter Controls -->
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button onclick="syncFromGoogleSheets()" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg shadow transition" title="Sinkron Data Cloud">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sinkron Cloud
-          </button>
-          <button onclick="exportToExcel()" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3 rounded-lg shadow transition">
-            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Excel
-          </button>
-          <button onclick="window.print()" class="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold py-2 px-3 rounded-lg shadow transition">
-            <i data-lucide="printer" class="w-4 h-4"></i> Cetak / PDF
-          </button>
-        </div>
-      </div>
-
-      <!-- PAGE CONTENT CONTAINER -->
-      <div id="pageContent"></div>
-
-    </main>
-  </div>
-
-  <!-- MODAL TAMBAH TAHUN AJARAN BARU -->
-  <div id="addTaModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4 border border-slate-200">
-      <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-          <i data-lucide="calendar-plus" class="w-4 h-4 text-brand-blue"></i> Tambah Tahun Ajaran Baru
-        </h3>
-        <button onclick="closeAddTaModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-      <form onsubmit="handleAddNewTA(event)" class="space-y-4 text-xs">
+    <div class="p-6">
+      <!-- FORM LOGIN -->
+      <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-4">
         <div>
-          <label class="block font-bold text-slate-600 mb-1">Tahun Ajaran Baru</label>
-          <input type="text" id="newTaInput" required placeholder="Contoh: 2027/2028" class="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-blue font-semibold">
-          <p class="text-[10px] text-slate-400 mt-1">Format: YYYY/YYYY (misal: 2027/2028)</p>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Username / NPSN Sekolah</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="text" id="loginUser" required placeholder="Masukkan username / NPSN sekolah" class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-blue outline-none font-medium">
+          </div>
         </div>
-        <div class="flex justify-end gap-2 border-t pt-3">
-          <button type="button" onclick="closeAddTaModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-3 py-2 rounded-lg">Batal</button>
-          <button type="submit" class="bg-brand-blue hover:bg-brand-blueDark text-white font-bold px-4 py-2 rounded-lg shadow">Tambah Tahun Ajaran</button>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Kata Sandi (Password)</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="password" id="loginPass" required placeholder="Masukkan password" class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-blue outline-none font-medium">
+          </div>
         </div>
+
+        <button type="submit" id="btnLoginSubmit" class="w-full bg-brand-blue hover:bg-brand-blueDark text-white font-bold py-2.5 rounded-lg text-xs shadow transition flex justify-center items-center gap-2">
+          <span>Masuk ke Aplikasi</span>
+        </button>
+      </form>
+
+      <!-- FORM REGISTRASI SEKOLAH -->
+      <form id="formRegister" onsubmit="handleRegister(event)" class="space-y-3 hidden">
+        <div class="bg-amber-50 border border-amber-200 text-amber-800 p-2.5 rounded-lg text-[11px] flex items-center gap-1.5">
+          <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 text-amber-600"></i>
+          <span><strong>Perhatian:</strong> Registrasi pendaftaran ini hanya bisa dilakukan satu kali.</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Pilih Sekolah</label>
+          <select id="regSchoolSelect" onchange="autofillSchoolDetails()" required class="w-full p-2 border border-slate-300 rounded-lg text-xs outline-none bg-white font-medium">
+            <option value="">-- Pilih Sekolah --</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Nama Lanud</label>
+          <input type="text" id="regCabang" readonly placeholder="Otomatis terisi sesuai sekolah" class="w-full p-2 border border-slate-200 rounded-lg text-xs bg-slate-100 font-semibold text-slate-700 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Nomor Pokok Sekolah Nasional (NPSN)</label>
+          <input type="text" id="regNpsn" required placeholder="Masukkan NPSN Sekolah (contoh: 20100001)" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-blue outline-none font-medium">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Buat Kata Sandi (Password)</label>
+          <input type="password" id="regPass" required placeholder="Buat password untuk akun sekolah" class="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-blue outline-none font-medium">
+        </div>
+
+        <button type="submit" id="btnRegSubmit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition flex justify-center items-center gap-2">
+          <span>Daftarkan Akun Sekolah</span>
+        </button>
       </form>
     </div>
   </div>
 
-  <!-- JAVASCRIPT LOGIC -->
   <script>
-    // WEB APP URL GOOGLE APPS SCRIPT LO
+    lucide.createIcons();
+
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyL1hTaSaYSmluvAmJhrGIL15HBzYx1qptUT-E7rKcBmJ4c7hGPkzPYyQHuVoFVHLL_/exec";
 
-    const docsConfig = [
-      { key: 'rkas', label: 'RKAS' },
-      { key: 'rpss', label: 'RPSS' },
-      { key: 'raporPendidikan', label: 'Rapor Pendidikan Sekolah' },
-      { key: 'mpls', label: 'Hasil Laporan MPLS' },
-      { key: 'kaldik', label: 'Kalender Pendidikan Sekolah' },
-      { key: 'sarpras', label: 'Data Sarana dan Prasarana' },
-      { key: 'medsos', label: 'Laporan Perkembangan Media Sosial' },
-      { key: 'jadwalPelajaran', label: 'Jadwal Pelajaran' },
-      { key: 'skPembagianTugas', label: 'SK Pembagian Tugas' }
+    const masterSekolahList = [
+      { id: 'S01', nama: 'SMP ANGKASA SOEWONDO MEDAN', lanud: 'LANUD SOEWONDO MEDAN' },
+      { id: 'S02', nama: 'SMP ANGKASA SUTAN SJAHRIR', lanud: 'LANUD SUTAN SJAHRIR' },
+      { id: 'S03', nama: 'SMP ANGKASA BUN YAMIN', lanud: 'LANUD BUN YAMIN' },
+      { id: 'S04', nama: 'SMP ANGKASA HALIM P.K JAKARTA', lanud: 'LANUD HALIM P.K JAKARTA' },
+      { id: 'S05', nama: 'SMP ANGKASA ATANG SENDJAJA BOGOR', lanud: 'LANUD ATANG SENDJAJA BOGOR' },
+      { id: 'S06', nama: 'SMP ANGKASA HUSEIN SASTRANEGARA BANDUNG', lanud: 'LANUD HUSEIN SASTRANEGARA BANDUNG' },
+      { id: 'S07', nama: 'SMP ANGKASA HASANUDDIN MAKASSAR', lanud: 'LANUD HASANUDDIN MAKASSAR' },
+      { id: 'S08', nama: 'SMP ANGKASA ABD. SALEH MALANG', lanud: 'LANUD ABD. SALEH MALANG' },
+      { id: 'S09', nama: 'SMP ANGKASA EL TARI', lanud: 'LANUD EL TARI' },
+      { id: 'S10', nama: 'SMP ANGKASA PATTIMURA', lanud: 'LANUD PATTIMURA' },
+      { id: 'S11', nama: 'SMP ANGKASA MANUHUA BIAK', lanud: 'LANUD MANUHUA BIAK' },
+      { id: 'S12', nama: 'MTs ANGKASA LEO WATTIMENA MOROTAI', lanud: 'LANUD LEO WATTIMENA MOROTAI' },
+      { id: 'S13', nama: 'SMP ANGKASA SULAIMAN', lanud: 'LANUD SULAIMAN' },
+      { id: 'S14', nama: 'SMP ANGKASA ADI SOEMARMO SOLO', lanud: 'LANUD ADI SOEMARMO SOLO' },
+      { id: 'S15', nama: 'SMP ANGKASA ADI SUTJIPTO YOGYAKARTA', lanud: 'LANUD ADI SUTJIPTO YOGYAKARTA' }
     ];
 
-    const initialData = { "2026/2027": [] };
+    const defaultUsers = [
+      { user: 'admin', pass: 'admin123', role: 'ADMIN', nama: 'Admin Pusat' },
+      { user: 'pimpinan', pass: 'pimpinan123', role: 'VIEWER', nama: 'Pimpinan' }
+    ];
 
-    let activeTab = 'dashboard';
-    let db = JSON.parse(localStorage.getItem('sidsa_db_v10')) || initialData;
-
-    if (!db["2026/2027"]) db["2026/2027"] = [];
-
-    function saveDB() {
-      localStorage.setItem('sidsa_db_v10', JSON.stringify(db));
+    if (!localStorage.getItem('sidsa_users_v10')) {
+      localStorage.setItem('sidsa_users_v10', JSON.stringify(defaultUsers));
     }
 
-    async function syncFromGoogleSheets() {
-      try {
-        const response = await fetch(SCRIPT_URL);
-        const json = await response.json();
-        if (json.status === "success" && Object.keys(json.data).length > 0) {
-          db = json.data;
-          saveDB();
-          renderFilterControls();
-          renderPage(activeTab);
-          alert("Sinkronisasi data dari Google Sheets berhasil!");
-        }
-      } catch (err) {
-        console.error("Gagal ambil data Sheets:", err);
+    window.onload = function() {
+      const selectElem = document.getElementById('regSchoolSelect');
+      masterSekolahList.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.innerText = s.nama;
+        selectElem.appendChild(opt);
+      });
+    };
+
+    function autofillSchoolDetails() {
+      const selectedId = document.getElementById('regSchoolSelect').value;
+      const school = masterSekolahList.find(s => s.id === selectedId);
+      if (school) {
+        document.getElementById('regCabang').value = school.lanud;
+      } else {
+        document.getElementById('regCabang').value = '';
       }
     }
 
-    async function sendSchoolDataToCloud(schoolData) {
-      const taList = Object.keys(db).sort().reverse();
-      const ta = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
+    function switchTab(tab) {
+      const formLogin = document.getElementById('formLogin');
+      const formRegister = document.getElementById('formRegister');
+      const tabBtnLogin = document.getElementById('tabBtnLogin');
+      const tabBtnRegister = document.getElementById('tabBtnRegister');
 
+      if (tab === 'login') {
+        formLogin.classList.remove('hidden');
+        formRegister.classList.add('hidden');
+        tabBtnLogin.className = "flex-1 py-3 text-center border-b-2 border-brand-blue text-brand-blue font-bold";
+        tabBtnRegister.className = "flex-1 py-3 text-center text-slate-400 hover:text-slate-600 font-bold";
+      } else {
+        formLogin.classList.add('hidden');
+        formRegister.classList.remove('hidden');
+        tabBtnRegister.className = "flex-1 py-3 text-center border-b-2 border-brand-blue text-brand-blue font-bold";
+        tabBtnLogin.className = "flex-1 py-3 text-center text-slate-400 hover:text-slate-600 font-bold";
+      }
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const uVal = document.getElementById('loginUser').value.trim();
+      const pVal = document.getElementById('loginPass').value.trim();
+
+      const usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
+      const found = usersDB.find(u => u.user.toLowerCase() === uVal.toLowerCase() && u.pass === pVal);
+
+      if (found) {
+        localStorage.setItem('sidsa_session_v10', JSON.stringify(found));
+        alert(`Login Berhasil! Selamat datang, ${found.nama}`);
+        window.location.href = 'index.html';
+      } else {
+        alert("Username atau Kata Sandi salah. Silakan periksa kembali!");
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const schoolId = document.getElementById('regSchoolSelect').value;
+      const npsn = document.getElementById('regNpsn').value.trim();
+      const pass = document.getElementById('regPass').value.trim();
+
+      if (!schoolId || !npsn) {
+        alert("Silakan lengkapi pilihan sekolah dan NPSN!");
+        return;
+      }
+
+      const school = masterSekolahList.find(s => s.id === schoolId);
+      let usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || defaultUsers;
+
+      if (usersDB.find(u => u.schoolId === schoolId || u.user === npsn)) {
+        alert(`Pendaftaran Gagal!\n\n${school.nama} atau NPSN (${npsn}) sudah terdaftar sebelumnya.`);
+        return;
+      }
+
+      const btnSubmit = document.getElementById('btnRegSubmit');
+      btnSubmit.disabled = true;
+      btnSubmit.innerText = "Mendaftarkan...";
+
+      const newUser = { user: npsn, pass: pass, role: 'SEKOLAH', npsn: npsn, schoolId: schoolId, nama: school.nama };
+      usersDB.push(newUser);
+      localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
+
+      // BUAT KANTO NGINPUT OTOMATIS DI DATABASE LOCAL
+      let localDB = JSON.parse(localStorage.getItem('sidsa_db_v10')) || { "2026/2027": [] };
+      if (!localDB["2026/2027"]) localDB["2026/2027"] = [];
+
+      const newSchoolData = {
+        npsn: npsn,
+        nama: school.nama,
+        cabang: school.lanud,
+        akreditasi: "A",
+        tahunAkreditasi: "2024",
+        kepalaSekolah: "",
+        statusValidation: "Belum Mengisi",
+        lastUpdate: new Date().toISOString().split('T')[0],
+        legalitas: { skPendirian: "-", tglSK: "-" },
+        siswa: { k7L: 0, k7P: 0, r7: 0, k8L: 0, k8P: 0, r8: 0, k9L: 0, k9P: 0, r9: 0 },
+        pendidik: { L: 0, P: 0, gty: 0, cgty: 0, dpkPns: 0 },
+        tendik: { L: 0, P: 0, kty: 0, ckty: 0 },
+        keuangan: { dopUmum7: 0, dopUmum8: 0, dopUmum9: 0, dopTniau7: 0, dopTniau8: 0, dopTniau9: 0, dspGel1: 0, dspGel2: 0, dspGel3: 0 },
+        dokumenLaporan: {}
+      };
+
+      localDB["2026/2027"].push(newSchoolData);
+      localStorage.setItem('sidsa_db_v10', JSON.stringify(localDB));
+
+      // KIRIM REGISTRASI DARI SEKOLAH KE GOOGLE SHEETS
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
           body: JSON.stringify({
+            action: "register_user",
+            user: npsn,
+            pass: pass,
+            role: "SEKOLAH",
+            nama: school.nama,
+            schoolId: schoolId
+          })
+        });
+
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({
             action: "save_school_data",
-            ta: ta,
-            npsn: schoolData.npsn,
-            nama: schoolData.nama,
-            cabang: schoolData.cabang,
-            kepalaSekolah: schoolData.kepalaSekolah || "",
-            akreditasi: schoolData.akreditasi || "A",
-            skPendirian: schoolData.legalitas?.skPendirian || "",
-            tglSK: schoolData.legalitas?.tglSK || "",
-            k7L: schoolData.siswa?.k7L || 0, k7P: schoolData.siswa?.k7P || 0, r7: schoolData.siswa?.r7 || 0,
-            k8L: schoolData.siswa?.k8L || 0, k8P: schoolData.siswa?.k8P || 0, r8: schoolData.siswa?.r8 || 0,
-            k9L: schoolData.siswa?.k9L || 0, k9P: schoolData.siswa?.k9P || 0, r9: schoolData.siswa?.r9 || 0,
-            pL: schoolData.pendidik?.L || 0, pP: schoolData.pendidik?.P || 0, gty: schoolData.pendidik?.gty || 0, cgty: schoolData.pendidik?.cgty || 0, dpkPns: schoolData.pendidik?.dpkPns || 0,
-            tL: schoolData.tendik?.L || 0, tP: schoolData.tendik?.P || 0, kty: schoolData.tendik?.kty || 0, ckty: schoolData.tendik?.ckty || 0,
-            dopUmum7: schoolData.keuangan?.dopUmum7 || 0, dopUmum8: schoolData.keuangan?.dopUmum8 || 0, dopUmum9: schoolData.keuangan?.dopUmum9 || 0,
-            dopTniau7: schoolData.keuangan?.dopTniau7 || 0, dopTniau8: schoolData.keuangan?.dopTniau8 || 0, dopTniau9: schoolData.keuangan?.dopTniau9 || 0,
-            dspGel1: schoolData.keuangan?.dspGel1 || 0, dspGel2: schoolData.keuangan?.dspGel2 || 0, dspGel3: schoolData.keuangan?.dspGel3 || 0,
-            statusValidation: schoolData.statusValidation || "Belum Mengisi"
+            ta: "2026/2027",
+            ...newSchoolData
           })
         });
       } catch (err) {
-        console.error("Gagal simpan ke cloud:", err);
+        console.error("Gagal sinkron ke Sheets:", err);
       }
+
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = "Daftarkan Akun Sekolah";
+
+      alert(`Registrasi ${school.nama} Berhasil!\n\nSilakan Login menggunakan NPSN (${npsn}) dan Kata Sandi Anda.`);
+      switchTab('login');
+      document.getElementById('loginUser').value = npsn;
     }
-
-    function resetDataDemo() {
-      if (confirm("Reset akan mengembalikan database lokal ke kosong. Lanjutkan?")) {
-        localStorage.removeItem('sidsa_db_v10');
-        localStorage.removeItem('sidsa_users_v10');
-        localStorage.removeItem('sidsa_session_v10');
-        window.location.href = 'login.html';
-      }
-    }
-
-    function handleLogout() {
-      if (confirm("Apakah Anda yakin ingin keluar?")) {
-        localStorage.removeItem('sidsa_session_v10');
-        window.location.href = 'login.html';
-      }
-    }
-
-    function parseRoleInfo() {
-      if (currentSession.role === 'SEKOLAH') return { role: 'SEKOLAH', npsn: currentSession.npsn };
-      return { role: currentSession.role, npsn: null };
-    }
-
-    function renderHeaderControls() {
-      const container = document.getElementById('topHeaderRightControls');
-      const isAdmin = currentSession.role === 'ADMIN';
-
-      container.innerHTML = `
-        ${isAdmin ? `
-          <button onclick="resetDataDemo()" class="text-xs font-semibold bg-blue-800 hover:bg-blue-700 text-blue-200 hover:text-white px-2.5 py-1.5 rounded-lg border border-blue-400/30 transition flex items-center gap-1">
-            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Database
-          </button>
-        ` : ''}
-        <div class="bg-blue-900/60 px-3 py-1.5 rounded-lg border border-blue-400/30 text-xs flex items-center gap-2">
-          <i data-lucide="user-check" class="w-4 h-4 text-brand-orange"></i>
-          <div>
-            <span class="font-bold block">${currentSession.nama}</span>
-            <span class="text-[10px] text-blue-200 block">${currentSession.role === 'SEKOLAH' ? `Sekolah (NPSN: ${currentSession.npsn})` : currentSession.role}</span>
-          </div>
-        </div>
-        <button onclick="handleLogout()" class="text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow">
-          <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar
-        </button>
-      `;
-    }
-
-    window.onload = function() {
-      renderHeaderControls();
-      renderSidebar();
-      renderFilterControls();
-      renderPage('dashboard');
-      syncFromGoogleSheets();
-      lucide.createIcons();
-    };
-
-    const menuItems = [
-      { id: 'dashboard', label: 'Dashboard Utama', icon: 'layout-dashboard', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
-      { id: 'identitas', label: 'Identitas & Legalitas', icon: 'school', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
-      { id: 'peserta_didik', label: 'Peserta Didik & Rombel', icon: 'users', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
-      { id: 'pendidik_tendik', label: 'Pendidik & Tendik', icon: 'user-check', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
-      { id: 'keuangan', label: 'Data Keuangan', icon: 'wallet', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
-      { id: 'dokumen_tambahan', label: 'Dokumen & Laporan', icon: 'file-text', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
-      { id: 'analisis', label: 'Analisis & Insight', icon: 'bar-chart-3', roles: ['ADMIN', 'VIEWER'] },
-      { id: 'validasi', label: 'Validasi Data', icon: 'check-square', roles: ['ADMIN'] },
-      { id: 'pengaturan_password', label: 'Ubah Password Akun', icon: 'key-round', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] }
-    ];
-
-    function renderSidebar() {
-      const container = document.getElementById('sidebarMenu');
-      container.innerHTML = '';
-      const { role } = parseRoleInfo();
-
-      menuItems.forEach(item => {
-        if (item.roles.includes(role)) {
-          const isActive = activeTab === item.id;
-          const btn = document.createElement('button');
-          btn.onclick = () => { activeTab = item.id; renderSidebar(); renderPage(item.id); };
-          btn.className = `w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-bold transition ${
-            isActive ? 'bg-brand-blue text-white shadow' : 'text-slate-600 hover:bg-slate-100'
-          }`;
-          btn.innerHTML = `<i data-lucide="${item.icon}" class="w-4 h-4"></i> <span>${item.label}</span>`;
-          container.appendChild(btn);
-        }
-      });
-      lucide.createIcons();
-    }
-
-    function renderFilterControls() {
-      const container = document.getElementById('filterControlsContainer');
-      const { role, npsn } = parseRoleInfo();
-      const isAdmin = role === 'ADMIN';
-
-      const taList = Object.keys(db).sort().reverse();
-      const selectedTA = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
-      const taOptionsHtml = taList.map(ta => `<option value="${ta}" ${ta === selectedTA ? 'selected' : ''}>${ta}</option>`).join('');
-
-      if (role === 'SEKOLAH') {
-        const currentSchool = db[selectedTA]?.find(s => s.npsn === npsn);
-        const schoolName = currentSchool ? currentSchool.nama : currentSession.nama;
-
-        container.innerHTML = `
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">Tahun Ajaran</label>
-            <select id="filterTA" onchange="applyFilters()" class="text-xs font-semibold border border-slate-300 rounded-md p-2 bg-slate-50 focus:ring-2 focus:ring-brand-blue outline-none">
-              ${taOptionsHtml}
-            </select>
-          </div>
-          <div class="self-end pb-2">
-            <span class="text-xs font-bold bg-blue-100 text-brand-blue px-3 py-1.5 rounded-md border border-blue-200">
-              Akses Terkunci: ${schoolName}
-            </span>
-          </div>
-        `;
-      } else {
-        container.innerHTML = `
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">Tahun Ajaran</label>
-            <div class="flex items-center gap-2">
-              <select id="filterTA" onchange="applyFilters()" class="text-xs font-semibold border border-slate-300 rounded-md p-2 bg-slate-50 focus:ring-2 focus:ring-brand-blue outline-none">
-                ${taOptionsHtml}
-              </select>
-              ${isAdmin ? `
-                <button onclick="openAddTaModal()" class="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-2 rounded-md shadow transition flex items-center gap-1">
-                  <i data-lucide="plus" class="w-3.5 h-3.5"></i> TA Baru
-                </button>
-              ` : ''}
-            </div>
-          </div>
-        `;
-      }
-      lucide.createIcons();
-    }
-
-    function openAddTaModal() { document.getElementById('addTaModal').classList.remove('hidden'); }
-    function closeAddTaModal() { document.getElementById('addTaModal').classList.add('hidden'); document.getElementById('newTaInput').value = ''; }
-
-    function handleAddNewTA(e) {
-      e.preventDefault();
-      const newTA = document.getElementById('newTaInput').value.trim();
-      if (!newTA || db[newTA]) return;
-
-      db[newTA] = [];
-      saveDB();
-      closeAddTaModal();
-      renderFilterControls();
-      document.getElementById('filterTA').value = newTA;
-      applyFilters();
-    }
-
-    function applyFilters() { renderPage(activeTab); }
-
-    function getFilteredData() {
-      const taList = Object.keys(db).sort().reverse();
-      const ta = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
-      let list = db[ta] || [];
-      const { role, npsn } = parseRoleInfo();
-      if (role === 'SEKOLAH') list = list.filter(s => s.npsn === npsn);
-      return list;
-    }
-
-    function formatRupiah(num) {
-      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
-    }
-
-    function renderPage(page) {
-      const container = document.getElementById('pageContent');
-      const list = getFilteredData();
-
-      if (page === 'dashboard') {
-        container.innerHTML = `<div class="bg-white p-6 rounded-xl border text-center text-xs text-slate-500 font-semibold">Selamat Datang di SIDSA - Sistem Informasi Data SMP Angkasa</div>`;
-      } else if (page === 'identitas') {
-        container.innerHTML = renderIdentitasModule(list);
-      } else if (page === 'peserta_didik') {
-        container.innerHTML = renderPesertaDidikModule(list);
-      } else if (page === 'pendidik_tendik') {
-        container.innerHTML = renderPendidikTendikModule(list);
-      } else if (page === 'keuangan') {
-        container.innerHTML = renderKeuanganModule(list);
-      } else if (page === 'dokumen_tambahan') {
-        container.innerHTML = renderDokumenTambahanModule(list);
-      }
-      lucide.createIcons();
-    }
-
-    function renderIdentitasModule(list) {
-      const { role } = parseRoleInfo();
-      const isSekolah = role === 'SEKOLAH';
-
-      if (list.length === 0) return `<div class="bg-white p-8 rounded-xl border text-center text-slate-500 text-xs">Belum ada data sekolah terdaftar.</div>`;
-
-      return `
-        <div class="bg-white rounded-xl border p-5 space-y-4">
-          ${list.map(s => `
-            <div class="border rounded-lg p-4 bg-slate-50 space-y-4">
-              <h4 class="font-bold text-brand-blue">${s.nama} (${s.npsn})</h4>${isSekolah ? `
-                <form onsubmit="saveIdentitasData(event, '${s.npsn}')" class="grid grid-cols-2 gap-4 text-xs">
-                  <div><label class="block font-semibold mb-1">Kepala Sekolah</label><input type="text" id="id_kepsek_${s.npsn}" value="${s.kepalaSekolah || ''}" class="w-full p-2 border rounded"></div>
-                  <div><label class="block font-semibold mb-1">SK Pendirian</label><input type="text" id="id_sk_${s.npsn}" value="${s.legalitas?.skPendirian || ''}" class="w-full p-2 border rounded"></div>
-                  <div class="col-span-2 text-right"><button type="submit" class="bg-brand-blue text-white font-bold px-4 py-2 rounded text-xs">Simpan Data & Sinkron Cloud</button></div>
-                </form>
-              ` : ''}
-            </div>
-          `).join('')}
-        </div>
-      `;
-    }
-
-    async function saveIdentitasData(e, npsn) {
-      e.preventDefault();
-      const taList = Object.keys(db).sort().reverse();
-      const ta = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
-      const school = db[ta].find(s => s.npsn === npsn);
-      if (school) {
-        school.kepalaSekolah = document.getElementById(`id_kepsek_${npsn}`).value;
-        if (!school.legalitas) school.legalitas = {};
-        school.legalitas.skPendirian = document.getElementById(`id_sk_${npsn}`).value;
-        school.statusValidation = "Menunggu Validasi";
-        saveDB();
-
-        // SINKRON KE GOOGLE SHEETS
-        await sendSchoolDataToCloud(school);
-        alert("Data Identitas Sekolah Berhasil Disimpan & Tersimpan di Cloud!");
-        renderPage('identitas');
-      }
-    }
-
-    function renderPesertaDidikModule(list) { return `<div class="bg-white p-5 rounded-xl border text-xs">Modul Peserta Didik Siap Digunakan.</div>`; }
-    function renderPendidikTendikModule(list) { return `<div class="bg-white p-5 rounded-xl border text-xs">Modul Pendidik & Tendik Siap Digunakan.</div>`; }
-    function renderKeuanganModule(list) { return `<div class="bg-white p-5 rounded-xl border text-xs">Modul Keuangan Siap Digunakan.</div>`; }
-    function renderDokumenTambahanModule(list) { return `<div class="bg-white p-5 rounded-xl border text-xs">Modul Dokumen Siap Digunakan.</div>`; }
-
-    function exportToExcel() { alert("Mengunduh laporan..."); }
   </script>
 </body>
 </html>
