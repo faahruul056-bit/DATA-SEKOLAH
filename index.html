@@ -78,7 +78,6 @@
     </main>
   </div>
 
-  <!-- MODAL TAMBAH TAHUN AJARAN BARU -->
   <div id="addTaModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4 border border-slate-200">
       <div class="flex justify-between items-center border-b pb-3">
@@ -101,7 +100,8 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyL1hTaSaYSmluvAmJhrGIL15HBzYx1qptUT-E7rKcBmJ4c7hGPkzPYyQHuVoFVHLL_/exec";
+    // URL WEB APP TERBARU
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxP77FqMcZMJnlmSijxQ0pXWMUR1vFJxD7p3j3hMcqaHh9hS_bP-ZXGbr9Je7NUNQ47/exec";
 
     const docsConfig = [
       { key: 'rkas', label: 'RKAS' },
@@ -117,7 +117,7 @@
 
     const initialData = { "2026/2027": [] };
 
-    let activeTab = 'dashboard';
+    let activeTab = 'identitas';
     let db = JSON.parse(localStorage.getItem('sidsa_db_v10')) || initialData;
 
     if (!db["2026/2027"]) db["2026/2027"] = [];
@@ -128,13 +128,14 @@
 
     async function syncFromGoogleSheets() {
       try {
-        const response = await fetch(SCRIPT_URL);
+        const response = await fetch(SCRIPT_URL + "?action=fetch_data");
         const json = await response.json();
         if (json.status === "success" && json.data && Object.keys(json.data).length > 0) {
           db = json.data;
           saveDB();
           renderFilterControls();
           renderPage(activeTab);
+          alert("Data berhasil disinkronkan dari Google Sheets!");
         }
       } catch (err) {
         console.error("Gagal ambil data Sheets:", err);
@@ -145,29 +146,33 @@
       const taList = Object.keys(db).sort().reverse();
       const ta = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
 
+      const payload = {
+        action: "save_school_data",
+        ta: ta,
+        npsn: schoolData.npsn,
+        nama: schoolData.nama,
+        cabang: schoolData.cabang,
+        kepalaSekolah: schoolData.kepalaSekolah || "",
+        akreditasi: schoolData.akreditasi || "A",
+        skPendirian: schoolData.legalitas?.skPendirian || "",
+        tglSK: schoolData.legalitas?.tglSK || "",
+        k7L: schoolData.siswa?.k7L || 0, k7P: schoolData.siswa?.k7P || 0, r7: schoolData.siswa?.r7 || 0,
+        k8L: schoolData.siswa?.k8L || 0, k8P: schoolData.siswa?.k8P || 0, r8: schoolData.siswa?.r8 || 0,
+        k9L: schoolData.siswa?.k9L || 0, k9P: schoolData.siswa?.k9P || 0, r9: schoolData.siswa?.r9 || 0,
+        pL: schoolData.pendidik?.L || 0, pP: schoolData.pendidik?.P || 0, gty: schoolData.pendidik?.gty || 0, cgty: schoolData.pendidik?.cgty || 0, dpkPns: schoolData.pendidik?.dpkPns || 0,
+        tL: schoolData.tendik?.L || 0, tP: schoolData.tendik?.P || 0, kty: schoolData.tendik?.kty || 0, ckty: schoolData.tendik?.ckty || 0,
+        dopUmum7: schoolData.keuangan?.dopUmum7 || 0, dopUmum8: schoolData.keuangan?.dopUmum8 || 0, dopUmum9: schoolData.keuangan?.dopUmum9 || 0,
+        dopTniau7: schoolData.keuangan?.dopTniau7 || 0, dopTniau8: schoolData.keuangan?.dopTniau8 || 0, dopTniau9: schoolData.keuangan?.dopTniau9 || 0,
+        dspGel1: schoolData.keuangan?.dspGel1 || 0, dspGel2: schoolData.keuangan?.dspGel2 || 0, dspGel3: schoolData.keuangan?.dspGel3 || 0,
+        statusValidation: schoolData.statusValidation || "Belum Mengisi"
+      };
+
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
-          body: JSON.stringify({
-            action: "save_school_data",
-            ta: ta,
-            npsn: schoolData.npsn,
-            nama: schoolData.nama,
-            cabang: schoolData.cabang,
-            kepalaSekolah: schoolData.kepalaSekolah || "",
-            akreditasi: schoolData.akreditasi || "A",
-            skPendirian: schoolData.legalitas?.skPendirian || "",
-            tglSK: schoolData.legalitas?.tglSK || "",
-            k7L: schoolData.siswa?.k7L || 0, k7P: schoolData.siswa?.k7P || 0, r7: schoolData.siswa?.r7 || 0,
-            k8L: schoolData.siswa?.k8L || 0, k8P: schoolData.siswa?.k8P || 0, r8: schoolData.siswa?.r8 || 0,
-            k9L: schoolData.siswa?.k9L || 0, k9P: schoolData.siswa?.k9P || 0, r9: schoolData.siswa?.r9 || 0,
-            pL: schoolData.pendidik?.L || 0, pP: schoolData.pendidik?.P || 0, gty: schoolData.pendidik?.gty || 0, cgty: schoolData.pendidik?.cgty || 0, dpkPns: schoolData.pendidik?.dpkPns || 0,
-            tL: schoolData.tendik?.L || 0, tP: schoolData.tendik?.P || 0, kty: schoolData.tendik?.kty || 0, ckty: schoolData.tendik?.ckty || 0,
-            dopUmum7: schoolData.keuangan?.dopUmum7 || 0, dopUmum8: schoolData.keuangan?.dopUmum8 || 0, dopUmum9: schoolData.keuangan?.dopUmum9 || 0,
-            dopTniau7: schoolData.keuangan?.dopTniau7 || 0, dopTniau8: schoolData.keuangan?.dopTniau8 || 0, dopTniau9: schoolData.keuangan?.dopTniau9 || 0,
-            dspGel1: schoolData.keuangan?.dspGel1 || 0, dspGel2: schoolData.keuangan?.dspGel2 || 0, dspGel3: schoolData.keuangan?.dspGel3 || 0,
-            statusValidation: schoolData.statusValidation || "Belum Mengisi"
-          })
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
       } catch (err) {
         console.error("Gagal simpan ke cloud:", err);
@@ -222,7 +227,7 @@
       renderHeaderControls();
       renderSidebar();
       renderFilterControls();
-      renderPage('dashboard');
+      renderPage('identitas');
       syncFromGoogleSheets();
       lucide.createIcons();
     };
@@ -234,8 +239,6 @@
       { id: 'pendidik_tendik', label: 'Pendidik & Tendik', icon: 'user-check', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
       { id: 'keuangan', label: 'Data Keuangan', icon: 'wallet', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
       { id: 'dokumen_tambahan', label: 'Dokumen & Laporan', icon: 'file-text', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
-      { id: 'analisis', label: 'Analisis & Insight', icon: 'bar-chart-3', roles: ['ADMIN', 'VIEWER'] },
-      { id: 'validasi', label: 'Validasi Data', icon: 'check-square', roles: ['ADMIN'] },
       { id: 'pengaturan_password', label: 'Ubah Password Akun', icon: 'key-round', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] }
     ];
 
@@ -756,8 +759,10 @@
         alert("Mengunggah berkas ke Google Drive...");
 
         try {
-          const res = await fetch(SCRIPT_URL, {
+          await fetch(SCRIPT_URL, {
             method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               action: "upload_file",
               ta: ta,
@@ -768,16 +773,14 @@
               fileData: base64Data
             })
           });
-          const json = await res.json();
-          if (json.status === "success") {
-            const school = db[ta].find(s => s.npsn === npsn);
-            if (school) {
-              if (!school.dokumenLaporan) school.dokumenLaporan = {};
-              school.dokumenLaporan[docKey] = { status: "Menunggu Validasi", fileName: file.name, fileUrl: json.fileUrl };
-              saveDB();
-              alert("Berkas Berhasil Diunggah ke Google Drive!");
-              renderPage('dokumen_tambahan');
-            }
+
+          const school = db[ta].find(s => s.npsn === npsn);
+          if (school) {
+            if (!school.dokumenLaporan) school.dokumenLaporan = {};
+            school.dokumenLaporan[docKey] = { status: "Menunggu Validasi", fileName: file.name };
+            saveDB();
+            alert("Berkas Berhasil Diunggah ke Google Drive!");
+            renderPage('dokumen_tambahan');
           }
         } catch (err) {
           alert("Gagal mengunggah berkas. Coba lagi.");
