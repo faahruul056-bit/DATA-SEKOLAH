@@ -78,6 +78,7 @@
     </main>
   </div>
 
+  <!-- MODAL TAMBAH TAHUN AJARAN BARU -->
   <div id="addTaModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4 border border-slate-200">
       <div class="flex justify-between items-center border-b pb-3">
@@ -116,7 +117,7 @@
 
     const initialData = { "2026/2027": [] };
 
-    let activeTab = 'identitas';
+    let activeTab = 'dashboard';
     let db = JSON.parse(localStorage.getItem('sidsa_db_v10')) || initialData;
 
     if (!db["2026/2027"]) db["2026/2027"] = [];
@@ -221,7 +222,7 @@
       renderHeaderControls();
       renderSidebar();
       renderFilterControls();
-      renderPage('identitas');
+      renderPage('dashboard');
       syncFromGoogleSheets();
       lucide.createIcons();
     };
@@ -233,6 +234,8 @@
       { id: 'pendidik_tendik', label: 'Pendidik & Tendik', icon: 'user-check', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
       { id: 'keuangan', label: 'Data Keuangan', icon: 'wallet', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
       { id: 'dokumen_tambahan', label: 'Dokumen & Laporan', icon: 'file-text', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] },
+      { id: 'analisis', label: 'Analisis & Insight', icon: 'bar-chart-3', roles: ['ADMIN', 'VIEWER'] },
+      { id: 'validasi', label: 'Validasi Data', icon: 'check-square', roles: ['ADMIN'] },
       { id: 'pengaturan_password', label: 'Ubah Password Akun', icon: 'key-round', roles: ['ADMIN', 'SEKOLAH', 'VIEWER'] }
     ];
 
@@ -327,7 +330,6 @@
 
       if (role === 'SEKOLAH') {
         let schoolData = list.find(s => s.npsn === npsn);
-        // JIKA DATA SEKOLAH BELUM ADA, OTOMATIS GENERATE TEMPAT ISIAN
         if (!schoolData) {
           schoolData = {
             npsn: npsn,
@@ -356,12 +358,27 @@
       return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
     }
 
+    function renderStatusBadge(status) {
+      if (status === 'Sudah Valid' || status === 'Valid') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300"><i data-lucide="check-circle" class="w-3 h-3 text-emerald-600"></i> Valid</span>`;
+      } else if (status === 'Perlu Perbaikan' || status === 'Belum Mengisi') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300"><i data-lucide="alert-triangle" class="w-3 h-3 text-rose-600"></i> ${status}</span>`;
+      } else {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300"><i data-lucide="clock" class="w-3 h-3 text-amber-600"></i> ${status}</span>`;
+      }
+    }
+
     function renderPage(page) {
       const container = document.getElementById('pageContent');
       const list = getFilteredData();
 
       if (page === 'dashboard') {
-        container.innerHTML = `<div class="bg-white p-6 rounded-xl border text-xs text-slate-500 font-semibold">Selamat Datang di SIDSA - Sistem Informasi Data SMP Angkasa</div>`;
+        container.innerHTML = `
+          <div class="bg-white p-6 rounded-xl border border-slate-200 space-y-4">
+            <h3 class="font-bold text-slate-800 text-base">Dashboard Utama SIDSA</h3>
+            <p class="text-xs text-slate-500">Selamat datang di Sistem Informasi Data SMP Angkasa. Silakan gunakan menu di sebelah kiri untuk mengisi dan mengelola data sekolah.</p>
+          </div>
+        `;
       } else if (page === 'identitas') {
         container.innerHTML = renderIdentitasModule(list);
       } else if (page === 'peserta_didik') {
@@ -372,16 +389,19 @@
         container.innerHTML = renderKeuanganModule(list);
       } else if (page === 'dokumen_tambahan') {
         container.innerHTML = renderDokumenTambahanModule(list);
+      } else if (page === 'pengaturan_password') {
+        container.innerHTML = renderPengaturanPasswordModule();
       }
       lucide.createIcons();
     }
 
+    // 1. MODUL IDENTITAS
     function renderIdentitasModule(list) {
       const { role } = parseRoleInfo();
       const isSekolah = role === 'SEKOLAH';
 
       return `
-        <div class="bg-white rounded-xl border p-5 space-y-4">
+        <div class="bg-white rounded-xl border p-5 space-y-4 shadow-sm">
           <h3 class="font-bold text-slate-800 text-base border-b pb-2">Identitas & Legalitas Sekolah</h3>
           ${list.map(s => `
             <div class="border rounded-lg p-4 bg-slate-50 space-y-4">
@@ -413,14 +433,7 @@
                     </button>
                   </div>
                 </form>
-              ` : `
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                  <div><span class="text-slate-400 block">NPSN</span><strong>${s.npsn}</strong></div>
-                  <div><span class="text-slate-400 block">Kepala Sekolah</span><strong>${s.kepalaSekolah || '-'}</strong></div>
-                  <div><span class="text-slate-400 block">Akreditasi</span><strong>${s.akreditasi || '-'}</strong></div>
-                  <div><span class="text-slate-400 block">SK Pendirian</span><strong>${s.legalitas?.skPendirian || '-'}</strong></div>
-                </div>
-              `}
+              ` : ''}
             </div>
           `).join('')}
         </div>
@@ -447,12 +460,369 @@
       }
     }
 
-    function renderPesertaDidikModule(list) { return `<div class="bg-white p-5 rounded-xl border text-xs font-semibold">Modul Peserta Didik Siap Digunakan. Silakan isi data di modul Identitas terlebih dahulu.</div>`; }
-    function renderPendidikTendikModule(list) { return `<div class="bg-white p-5 rounded-xl border text-xs font-semibold">Modul Pendidik & Tendik Siap Digunakan.</div>`; }
-    function renderKeuanganModule(list) { return `<div class="bg-white p-5 rounded-xl border text-xs font-semibold">Modul Keuangan Siap Digunakan.</div>`; }
-    function renderDokumenTambahanModule(list) { return `<div class="bg-white p-5 rounded-xl border text-xs font-semibold">Modul Dokumen Siap Digunakan.</div>`; }
+    // 2. MODUL PESERTA DIDIK
+    function renderPesertaDidikModule(list) {
+      const { role } = parseRoleInfo();
+      const isSekolah = role === 'SEKOLAH';
 
-    function exportToExcel() { alert("Mengunduh rekap data..."); }
+      return `
+        <div class="bg-white rounded-xl border p-5 space-y-4 shadow-sm">
+          <h3 class="font-bold text-slate-800 text-base border-b pb-2">Peserta Didik & Rombongan Belajar (Rombel)</h3>
+          ${list.map(s => `
+            <div class="border rounded-lg p-4 bg-slate-50 space-y-4">
+              <h4 class="font-bold text-brand-blue text-sm">${s.nama}</h4>${isSekolah ? `
+                <form onsubmit="saveSiswaData(event, '${s.npsn}')" class="space-y-4 text-xs">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-3 rounded-lg border space-y-2">
+                      <span class="font-bold text-brand-blue block border-b pb-1">Kelas VII</span>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-slate-500 block">Laki-Laki</label><input type="number" id="k7L_${s.npsn}" value="${s.siswa?.k7L || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">Perempuan</label><input type="number" id="k7P_${s.npsn}" value="${s.siswa?.k7P || 0}" class="w-full p-1.5 border rounded"></div>
+                      </div>
+                      <div><label class="text-slate-500 block">Jumlah Rombel</label><input type="number" id="r7_${s.npsn}" value="${s.siswa?.r7 || 0}" class="w-full p-1.5 border rounded"></div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-lg border space-y-2">
+                      <span class="font-bold text-brand-blue block border-b pb-1">Kelas VIII</span>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-slate-500 block">Laki-Laki</label><input type="number" id="k8L_${s.npsn}" value="${s.siswa?.k8L || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">Perempuan</label><input type="number" id="k8P_${s.npsn}" value="${s.siswa?.k8P || 0}" class="w-full p-1.5 border rounded"></div>
+                      </div>
+                      <div><label class="text-slate-500 block">Jumlah Rombel</label><input type="number" id="r8_${s.npsn}" value="${s.siswa?.r8 || 0}" class="w-full p-1.5 border rounded"></div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-lg border space-y-2">
+                      <span class="font-bold text-brand-blue block border-b pb-1">Kelas IX</span>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-slate-500 block">Laki-Laki</label><input type="number" id="k9L_${s.npsn}" value="${s.siswa?.k9L || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">Perempuan</label><input type="number" id="k9P_${s.npsn}" value="${s.siswa?.k9P || 0}" class="w-full p-1.5 border rounded"></div>
+                      </div>
+                      <div><label class="text-slate-500 block">Jumlah Rombel</label><input type="number" id="r9_${s.npsn}" value="${s.siswa?.r9 || 0}" class="w-full p-1.5 border rounded"></div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <button type="submit" class="bg-brand-blue hover:bg-brand-blueDark text-white font-bold px-4 py-2 rounded-lg shadow text-xs">
+                      Simpan Data Siswa & Sinkron Cloud
+                    </button>
+                  </div>
+                </form>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    async function saveSiswaData(e, npsn) {
+      e.preventDefault();
+      const taList = Object.keys(db).sort().reverse();
+      const ta = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
+      const school = db[ta].find(s => s.npsn === npsn);
+      if (school) {
+        if (!school.siswa) school.siswa = {};
+        school.siswa.k7L = parseInt(document.getElementById(`k7L_${npsn}`).value) || 0;
+        school.siswa.k7P = parseInt(document.getElementById(`k7P_${npsn}`).value) || 0;
+        school.siswa.r7 = parseInt(document.getElementById(`r7_${npsn}`).value) || 0;
+
+        school.siswa.k8L = parseInt(document.getElementById(`k8L_${npsn}`).value) || 0;
+        school.siswa.k8P = parseInt(document.getElementById(`k8P_${npsn}`).value) || 0;
+        school.siswa.r8 = parseInt(document.getElementById(`r8_${npsn}`).value) || 0;
+
+        school.siswa.k9L = parseInt(document.getElementById(`k9L_${npsn}`).value) || 0;
+        school.siswa.k9P = parseInt(document.getElementById(`k9P_${npsn}`).value) || 0;
+        school.siswa.r9 = parseInt(document.getElementById(`r9_${npsn}`).value) || 0;
+
+        saveDB();
+        await sendSchoolDataToCloud(school);
+        alert("Data Peserta Didik Berhasil Disimpan & Tersimpan di Cloud!");
+        renderPage('peserta_didik');
+      }
+    }
+
+    // 3. MODUL PENDIDIK & TENDIK
+    function renderPendidikTendikModule(list) {
+      const { role } = parseRoleInfo();
+      const isSekolah = role === 'SEKOLAH';
+
+      return `
+        <div class="bg-white rounded-xl border p-5 space-y-4 shadow-sm">
+          <h3 class="font-bold text-slate-800 text-base border-b pb-2">Pendidik (Guru) & Tenaga Kependidikan (Tendik)</h3>
+          ${list.map(s => `
+            <div class="border rounded-lg p-4 bg-slate-50 space-y-4 text-xs">
+              <h4 class="font-bold text-brand-blue text-sm">${s.nama}</h4>${isSekolah ? `
+                <form onsubmit="saveSDMData(event, '${s.npsn}')" class="space-y-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-3 rounded-lg border space-y-3">
+                      <span class="font-bold text-brand-blue block border-b pb-1">1. Data Pendidik (Guru)</span>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-slate-500 block">Guru Laki-Laki</label><input type="number" id="pL_${s.npsn}" value="${s.pendidik?.L || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">Guru Perempuan</label><input type="number" id="pP_${s.npsn}" value="${s.pendidik?.P || 0}" class="w-full p-1.5 border rounded"></div>
+                      </div>
+                      <span class="font-bold text-slate-600 block pt-2 border-t">Status Kepegawaian Guru:</span>
+                      <div class="grid grid-cols-3 gap-2">
+                        <div><label class="text-slate-500 block">GTY</label><input type="number" id="gty_${s.npsn}" value="${s.pendidik?.gty || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">CGTY</label><input type="number" id="cgty_${s.npsn}" value="${s.pendidik?.cgty || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">DPK PNS</label><input type="number" id="dpkPns_${s.npsn}" value="${s.pendidik?.dpkPns || 0}" class="w-full p-1.5 border rounded"></div>
+                      </div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-lg border space-y-3">
+                      <span class="font-bold text-brand-blue block border-b pb-1">2. Tenaga Kependidikan (Tendik)</span>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-slate-500 block">Tendik Laki-Laki</label><input type="number" id="tL_${s.npsn}" value="${s.tendik?.L || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">Tendik Perempuan</label><input type="number" id="tP_${s.npsn}" value="${s.tendik?.P || 0}" class="w-full p-1.5 border rounded"></div>
+                      </div>
+                      <span class="font-bold text-slate-600 block pt-2 border-t">Status Kepegawaian Tendik:</span>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-slate-500 block">KTY</label><input type="number" id="kty_${s.npsn}" value="${s.tendik?.kty || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">CKTY</label><input type="number" id="ckty_${s.npsn}" value="${s.tendik?.ckty || 0}" class="w-full p-1.5 border rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <button type="submit" class="bg-brand-blue hover:bg-brand-blueDark text-white font-bold px-4 py-2 rounded-lg shadow text-xs">
+                      Simpan Data SDM & Sinkron Cloud
+                    </button>
+                  </div>
+                </form>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    async function saveSDMData(e, npsn) {
+      e.preventDefault();
+      const taList = Object.keys(db).sort().reverse();
+      const ta = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
+      const school = db[ta].find(s => s.npsn === npsn);
+      if (school) {
+        if (!school.pendidik) school.pendidik = {};
+        if (!school.tendik) school.tendik = {};
+
+        school.pendidik.L = parseInt(document.getElementById(`pL_${npsn}`).value) || 0;
+        school.pendidik.P = parseInt(document.getElementById(`pP_${npsn}`).value) || 0;
+        school.pendidik.gty = parseInt(document.getElementById(`gty_${npsn}`).value) || 0;
+        school.pendidik.cgty = parseInt(document.getElementById(`cgty_${npsn}`).value) || 0;
+        school.pendidik.dpkPns = parseInt(document.getElementById(`dpkPns_${npsn}`).value) || 0;
+
+        school.tendik.L = parseInt(document.getElementById(`tL_${npsn}`).value) || 0;
+        school.tendik.P = parseInt(document.getElementById(`tP_${npsn}`).value) || 0;
+        school.tendik.kty = parseInt(document.getElementById(`kty_${npsn}`).value) || 0;
+        school.tendik.ckty = parseInt(document.getElementById(`ckty_${npsn}`).value) || 0;
+
+        saveDB();
+        await sendSchoolDataToCloud(school);
+        alert("Data SDM Pendidik & Tendik Berhasil Disimpan & Tersimpan di Cloud!");
+        renderPage('pendidik_tendik');
+      }
+    }
+
+    // 4. MODUL KEUANGAN
+    function renderKeuanganModule(list) {
+      const { role } = parseRoleInfo();
+      const isSekolah = role === 'SEKOLAH';
+
+      return `
+        <div class="bg-white rounded-xl border p-5 space-y-4 shadow-sm text-xs">
+          <h3 class="font-bold text-slate-800 text-base border-b pb-2">Data Keuangan (DOP & DSP)</h3>
+          ${list.map(s => {
+            const keu = s.keuangan || {};
+            return `
+              <div class="border rounded-lg p-4 bg-slate-50 space-y-4">
+                <h4 class="font-bold text-brand-blue text-sm">${s.nama}</h4>${isSekolah ? `
+                  <form onsubmit="saveKeuanganData(event, '${s.npsn}')" class="space-y-4">
+                    <div class="bg-white p-3 rounded-lg border space-y-3">
+                      <span class="font-bold text-brand-blue block border-b pb-1">1. DOP Bulanan (Per Siswa)</span>
+                      <div>
+                        <span class="font-semibold block mb-1">A. Kategori Umum:</span>
+                        <div class="grid grid-cols-3 gap-2">
+                          <div><label class="text-slate-500 block">Kelas VII</label><input type="number" id="dopUmum7_${s.npsn}" value="${keu.dopUmum7 || 0}" class="w-full p-1.5 border rounded"></div>
+                          <div><label class="text-slate-500 block">Kelas VIII</label><input type="number" id="dopUmum8_${s.npsn}" value="${keu.dopUmum8 || 0}" class="w-full p-1.5 border rounded"></div>
+                          <div><label class="text-slate-500 block">Kelas IX</label><input type="number" id="dopUmum9_${s.npsn}" value="${keu.dopUmum9 || 0}" class="w-full p-1.5 border rounded"></div>
+                        </div>
+                      </div>
+
+                      <div class="pt-2 border-t">
+                        <span class="font-semibold block mb-1">B. Kategori Anak Anggota/PNS TNI AU:</span>
+                        <div class="grid grid-cols-3 gap-2">
+                          <div><label class="text-slate-500 block">Kelas VII</label><input type="number" id="dopTniau7_${s.npsn}" value="${keu.dopTniau7 || 0}" class="w-full p-1.5 border rounded"></div>
+                          <div><label class="text-slate-500 block">Kelas VIII</label><input type="number" id="dopTniau8_${s.npsn}" value="${keu.dopTniau8 || 0}" class="w-full p-1.5 border rounded"></div>
+                          <div><label class="text-slate-500 block">Kelas IX</label><input type="number" id="dopTniau9_${s.npsn}" value="${keu.dopTniau9 || 0}" class="w-full p-1.5 border rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-lg border space-y-2">
+                      <span class="font-bold text-brand-blue block border-b pb-1">2. Rincian DSP (Sekali Bayar PPDB)</span>
+                      <div class="grid grid-cols-3 gap-2">
+                        <div><label class="text-slate-500 block">Gelombang I</label><input type="number" id="dspGel1_${s.npsn}" value="${keu.dspGel1 || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">Gelombang II</label><input type="number" id="dspGel2_${s.npsn}" value="${keu.dspGel2 || 0}" class="w-full p-1.5 border rounded"></div>
+                        <div><label class="text-slate-500 block">Gelombang III</label><input type="number" id="dspGel3_${s.npsn}" value="${keu.dspGel3 || 0}" class="w-full p-1.5 border rounded"></div>
+                      </div>
+                    </div>
+
+                    <div class="text-right">
+                      <button type="submit" class="bg-brand-blue hover:bg-brand-blueDark text-white font-bold px-4 py-2 rounded-lg shadow text-xs">
+                        Simpan Data Keuangan & Sinkron Cloud
+                      </button>
+                    </div>
+                  </form>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    async function saveKeuanganData(e, npsn) {
+      e.preventDefault();
+      const taList = Object.keys(db).sort().reverse();
+      const ta = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
+      const school = db[ta].find(s => s.npsn === npsn);
+      if (school) {
+        if (!school.keuangan) school.keuangan = {};
+        school.keuangan.dopUmum7 = parseInt(document.getElementById(`dopUmum7_${npsn}`).value) || 0;
+        school.keuangan.dopUmum8 = parseInt(document.getElementById(`dopUmum8_${npsn}`).value) || 0;
+        school.keuangan.dopUmum9 = parseInt(document.getElementById(`dopUmum9_${npsn}`).value) || 0;
+
+        school.keuangan.dopTniau7 = parseInt(document.getElementById(`dopTniau7_${npsn}`).value) || 0;
+        school.keuangan.dopTniau8 = parseInt(document.getElementById(`dopTniau8_${npsn}`).value) || 0;
+        school.keuangan.dopTniau9 = parseInt(document.getElementById(`dopTniau9_${npsn}`).value) || 0;
+
+        school.keuangan.dspGel1 = parseInt(document.getElementById(`dspGel1_${npsn}`).value) || 0;
+        school.keuangan.dspGel2 = parseInt(document.getElementById(`dspGel2_${npsn}`).value) || 0;
+        school.keuangan.dspGel3 = parseInt(document.getElementById(`dspGel3_${npsn}`).value) || 0;
+
+        saveDB();
+        await sendSchoolDataToCloud(school);
+        alert("Data Keuangan Berhasil Disimpan & Tersimpan di Cloud!");
+        renderPage('keuangan');
+      }
+    }
+
+    // 5. MODUL DOKUMEN & LAPORAN
+    function renderDokumenTambahanModule(list) {
+      const { role } = parseRoleInfo();
+      const isSekolah = role === 'SEKOLAH';
+
+      return `
+        <div class="bg-white rounded-xl border p-5 space-y-4 shadow-sm">
+          <h3 class="font-bold text-slate-800 text-base border-b pb-2">Kelengkapan Dokumen Wajib Sekolah</h3>
+          ${list.map(s => {
+            const docs = s.dokumenLaporan || {};
+            return `
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${docsConfig.map(doc => {
+                  const docData = docs[doc.key] || { status: "Belum Mengisi", fileName: "" };
+                  return `
+                    <div class="p-3.5 rounded-lg border bg-slate-50 space-y-2 text-xs flex flex-col justify-between">
+                      <div>
+                        <div class="flex justify-between items-start gap-1">
+                          <span class="font-bold text-slate-800">${doc.label}</span>
+                          ${renderStatusBadge(docData.status)}
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-1">Berkas: <strong>${docData.fileName || 'Belum ada'}</strong></p>
+                      </div>
+
+                      ${isSekolah ? `
+                        <div class="pt-2 border-t">
+                          <label class="block text-[10px] text-slate-500 mb-1">Unggah Berkas PDF/Excel:</label>
+                          <input type="file" onchange="uploadDocFile('${s.npsn}', '${doc.key}', this)" class="w-full text-[10px]">
+                        </div>
+                      ` : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    async function uploadDocFile(npsn, docKey, inputElem) {
+      const file = inputElem.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const base64Data = e.target.result.split(',')[1];
+        const taList = Object.keys(db).sort().reverse();
+        const ta = document.getElementById('filterTA')?.value || taList[0] || "2026/2027";
+
+        alert("Mengunggah berkas ke Google Drive...");
+
+        try {
+          const res = await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "upload_file",
+              ta: ta,
+              npsn: npsn,
+              docKey: docKey,
+              fileName: file.name,
+              mimeType: file.type,
+              fileData: base64Data
+            })
+          });
+          const json = await res.json();
+          if (json.status === "success") {
+            const school = db[ta].find(s => s.npsn === npsn);
+            if (school) {
+              if (!school.dokumenLaporan) school.dokumenLaporan = {};
+              school.dokumenLaporan[docKey] = { status: "Menunggu Validasi", fileName: file.name, fileUrl: json.fileUrl };
+              saveDB();
+              alert("Berkas Berhasil Diunggah ke Google Drive!");
+              renderPage('dokumen_tambahan');
+            }
+          }
+        } catch (err) {
+          alert("Gagal mengunggah berkas. Coba lagi.");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // MODUL UBAH PASSWORD
+    function renderPengaturanPasswordModule() {
+      return `
+        <div class="max-w-md mx-auto bg-white rounded-xl border p-6 space-y-4 shadow-sm text-xs">
+          <h3 class="font-bold text-slate-800 text-base border-b pb-2">Ubah Kata Sandi Akun</h3>
+          <form onsubmit="handleUpdatePassword(event)" class="space-y-3">
+            <div><label class="block font-bold mb-1">Kata Sandi Lama</label><input type="password" id="oldPassword" required class="w-full p-2 border rounded"></div>
+            <div><label class="block font-bold mb-1">Kata Sandi Baru</label><input type="password" id="newPassword" required class="w-full p-2 border rounded"></div>
+            <div><label class="block font-bold mb-1">Konfirmasi Kata Sandi Baru</label><input type="password" id="confirmNewPassword" required class="w-full p-2 border rounded"></div>
+            <button type="submit" class="w-full bg-brand-blue text-white font-bold py-2 rounded shadow">Simpan Kata Sandi</button>
+          </form>
+        </div>
+      `;
+    }
+
+    function handleUpdatePassword(e) {
+      e.preventDefault();
+      const oldPass = document.getElementById('oldPassword').value.trim();
+      const newPass = document.getElementById('newPassword').value.trim();
+      const confirmPass = document.getElementById('confirmNewPassword').value.trim();
+
+      if (oldPass !== currentSession.pass) { alert("Kata sandi lama salah!"); return; }
+      if (newPass !== confirmPass) { alert("Konfirmasi kata sandi baru tidak cocok!"); return; }
+
+      let usersDB = JSON.parse(localStorage.getItem('sidsa_users_v10')) || [];
+      const userIdx = usersDB.findIndex(u => u.user.toLowerCase() === currentSession.user.toLowerCase());
+      if (userIdx !== -1) {
+        usersDB[userIdx].pass = newPass;
+        localStorage.setItem('sidsa_users_v10', JSON.stringify(usersDB));
+        currentSession.pass = newPass;
+        localStorage.setItem('sidsa_session_v10', JSON.stringify(currentSession));
+        alert("Kata sandi berhasil diperbarui!");
+        renderPage('dashboard');
+      }
+    }
+
+    function exportToExcel() { alert("Mengunduh data rekapitulasi..."); }
   </script>
 </body>
 </html>
