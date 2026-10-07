@@ -146,8 +146,8 @@
 
       fetch(API_URL, {
         method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
+        mode: "text/plain",
+        headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ action: "saveDB", db: db })
       })
       .then(() => console.log("Data berhasil disinkronkan ke Google Spreadsheet"))
